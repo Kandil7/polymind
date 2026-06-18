@@ -1,0 +1,64 @@
+# PolyMind — System Architecture
+
+```mermaid
+graph TB
+    subgraph "Layer 4 — API / Delivery"
+        FASTAPI[FastAPI App]
+        HEALTH[/health]
+        QUERY[/query]
+        INGEST[/ingest]
+        EVAL[/eval]
+    end
+
+    subgraph "Layer 3 — Application"
+        GRAPH[LangGraph Agent Graph]
+        PLANNER[Planner Node]
+        ROUTER[Router Node]
+        CRITIC[Critic Node]
+        SYNTH[Synthesizer Node]
+    end
+
+    subgraph "Layer 2 — Domain"
+        ENTITIES[Entities]
+        INTERFACES[Interfaces]
+        VALUEOBJ[Value Objects]
+        EXCEPTIONS[Exceptions]
+    end
+
+    subgraph "Layer 1 — Infrastructure"
+        QDRANT[Qdrant Vector DB]
+        SPECIALISTS[HF Specialists<br/>ASR | VQA | DocQA | TableQA]
+        MEMORY[4-Layer Memory<br/>Mem0 + Qdrant]
+        EVALUATOR[DeepEval + RAGAS]
+        N8N[n8n Workflows]
+        MODAL[Modal GPU]
+    end
+
+    FASTAPI --> GRAPH
+    GRAPH --> PLANNER --> ROUTER
+    ROUTER --> SPECIALISTS
+    SPECIALISTS --> QDRANT
+    GRAPH --> CRITIC --> EVALUATOR
+    CRITIC --> GRAPH
+    GRAPH --> SYNTH
+    PLANNER --> MEMORY
+    N8N --> INGEST
+
+    style Layer4 fill:#e3f2fd
+    style Layer3 fill:#e8f5e9
+    style Layer2 fill:#fff3e0
+    style Layer1 fill:#fce4ec
+```
+
+## Data Flow
+
+1. **User Input** → FastAPI gateway (text/audio/image/PDF)
+2. **Planner** → Detects modality + intent, recalls memory
+3. **Router** → Dispatches to specialist agent(s)
+4. **Specialist** → Processes modality-specific input
+5. **RAG Retriever** → Retrieves relevant context (HippoRAG)
+6. **Generator** → Synthesizes answer (MoA or single LLM)
+7. **Critic** → Self-evaluates (faithfulness, relevancy, hallucination)
+8. **Retry Loop** → If Critic fails, re-retrieve with expanded query
+9. **Synthesizer** → Merges outputs, adds citations
+10. **Memory** → Stores episode, consolidates semantic facts
