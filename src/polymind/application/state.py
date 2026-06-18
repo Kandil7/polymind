@@ -6,10 +6,9 @@ Every node reads from and writes to this state.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, TypedDict
+from typing import Literal, TypedDict
 
-if TYPE_CHECKING:
-    from polymind.domain.entities.query import ScoreResult
+from polymind.domain.entities.query import ScoreResult  # noqa: TCH001
 
 
 class PolyMindState(TypedDict, total=False):
