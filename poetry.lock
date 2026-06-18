@@ -1687,6 +1687,29 @@ files = [
 pypi = ["pip (>=24.0)", "platformdirs (>=4.2)", "wheel (>=0.42)"]
 
 [[package]]
+name = "groq"
+version = "1.4.0"
+description = "The official Python library for the groq API"
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "groq-1.4.0-py3-none-any.whl", hash = "sha256:99a3bcd57c71538f69cf11c75cdae91598983d2681b9a14008636a018c4b6d17"},
+    {file = "groq-1.4.0.tar.gz", hash = "sha256:09b1ed51408c6969a11ef1a4dfe44d42ec975b5f1510e5de3f3dab56e22dffc6"},
+]
+
+[package.dependencies]
+anyio = ">=3.5.0,<5"
+distro = ">=1.7.0,<2"
+httpx = ">=0.23.0,<1"
+pydantic = ">=1.9.0,<3"
+sniffio = "*"
+typing-extensions = ">=4.14,<5"
+
+[package.extras]
+aiohttp = ["aiohttp", "httpx-aiohttp (>=0.1.9)"]
+
+[[package]]
 name = "grpcio"
 version = "1.81.1"
 description = "HTTP/2-based RPC framework"
@@ -8359,4 +8382,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "63af034486498e5b23f65a0c4b9c1b4f77ec4b432d36c2f6a2851f2e239b2a6c"
+content-hash = "2a238a9824cf43b2864224f0f58924fd3bb79ba56d8bf93034ac5798efac17fb"
