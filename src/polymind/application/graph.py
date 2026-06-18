@@ -1,34 +1,90 @@
-"""LangGraph graph factory — builds the PolyMind agent graph."""
+"""LangGraph graph factory — builds the full PolyMind agent graph.
+
+Architecture:
+    Planner → Router → [Specialist] → RAG → Generator → Critic → Synthesizer
+                                          ↑              |
+                                          └── retry ←────┘
+
+Phase 4: Full agent graph with all nodes wired.
+"""
 
 from __future__ import annotations
 
+import structlog
 from langgraph.graph import END, StateGraph
 
+from polymind.application.agents import (
+    critic,
+    generator,
+    planner,
+    rag_node,
+    router,
+    specialist_nodes,
+    synthesizer,
+)
 from polymind.application.state import PolyMindState
+
+logger = structlog.get_logger()
 
 
 def build_graph() -> StateGraph:
     """Build and compile the PolyMind agent graph.
 
-    Phase 1: Stub graph — planner → END.
-    Will be expanded in Phase 4 with all agent nodes.
+    Returns:
+        Compiled StateGraph ready for invocation.
     """
     graph = StateGraph(PolyMindState)
 
-    graph.add_node("planner", _planner_stub)
+    # ── Add nodes ────────────────────────────────────────
+    graph.add_node("planner", planner.run)
+    graph.add_node("router", router.run)
+    graph.add_node("asr", specialist_nodes.asr_node)
+    graph.add_node("vqa", specialist_nodes.vqa_node)
+    graph.add_node("docqa", specialist_nodes.docqa_node)
+    graph.add_node("tableqa", specialist_nodes.tableqa_node)
+    graph.add_node("rag", rag_node.run)
+    graph.add_node("generator", generator.run)
+    graph.add_node("critic", critic.run)
+    graph.add_node("synthesizer", synthesizer.run)
+
+    # ── Wire edges ───────────────────────────────────────
     graph.set_entry_point("planner")
-    graph.add_edge("planner", END)
+    graph.add_edge("planner", "router")
 
+    # Router → Specialist (conditional)
+    graph.add_conditional_edges(
+        "router",
+        router.decide,
+        {
+            "asr": "asr",
+            "vqa": "vqa",
+            "docqa": "docqa",
+            "tableqa": "tableqa",
+            "rag": "rag",
+        },
+    )
+
+    # All specialists → RAG (enrich context)
+    for node in ["asr", "vqa", "docqa", "tableqa"]:
+        graph.add_edge(node, "rag")
+
+    # RAG → Generator → Critic
+    graph.add_edge("rag", "generator")
+    graph.add_edge("generator", "critic")
+
+    # Critic → retry loop or synthesize
+    graph.add_conditional_edges(
+        "critic",
+        critic.decide,
+        {
+            "retry": "rag",           # Re-retrieve with expanded query
+            "pass": "synthesizer",    # Answer passed evaluation
+            "fail_max": "synthesizer",  # Max retries hit, pass anyway
+        },
+    )
+
+    # Synthesizer → END
+    graph.add_edge("synthesizer", END)
+
+    logger.info("graph.built")
     return graph.compile()
-
-
-def _planner_stub(state: PolyMindState) -> PolyMindState:
-    """Placeholder planner — will be replaced in Phase 4."""
-    return {
-        **state,
-        "modality": "text",
-        "intent": "general",
-        "final_answer": "Stub: agent graph not yet implemented.",
-        "passed_critic": True,
-        "retry_count": 0,
-    }
