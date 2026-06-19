@@ -35,6 +35,7 @@ soundfile = "^0.12.1"
 scikit-learn = "^1.5.0"
 Pillow = "^10.4.0"
 aiofiles = "^24.1.0"
+groq = "^1.4.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.0"
@@ -72,6 +73,7 @@ warn_unused_ignores = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+addopts = "-p no:deepeval -p no:posthog"
 markers = [
     "unit: pure unit tests (no I/O)",
     "integration: tests with real services",
