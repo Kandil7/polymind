@@ -38,7 +38,7 @@ class Embedder:
         """Return the embedding dimension."""
         if self._model is None:
             return 1024  # bge-m3 default
-        return self._model.get_embedding_dimension
+        return self._model.get_sentence_embedding_dimension()
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         """Embed a list of texts into dense vectors.

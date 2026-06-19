@@ -42,16 +42,13 @@ async def ingest_endpoint(
         shutil.copyfileobj(file.file, f)
 
     try:
-        from polymind.infrastructure.rag.embedder import Embedder
-        from polymind.infrastructure.rag.ingestion import IngestionPipeline
+        from polymind.application.use_cases.ingest_use_case import (
+            IngestUseCase,
+        )
 
-        embedder = Embedder()
-        pipeline = IngestionPipeline(embedder, collection=collection)
-
-        import asyncio
-
-        chunks = asyncio.get_event_loop().run_until_complete(
-            pipeline.ingest_file(str(tmp), source_name=source_name)
+        use_case = IngestUseCase(collection=collection)
+        result = await use_case.execute(
+            str(tmp), source_name=source_name
         )
 
         processing_time = (time.time() - start_time) * 1000
@@ -59,13 +56,13 @@ async def ingest_endpoint(
         logger.info(
             "ingest.done",
             source=file.filename,
-            chunks=len(chunks),
+            chunks=result.chunks_created,
         )
 
         return IngestResponse(
-            status="success",
-            chunks_created=len(chunks),
-            source=file.filename,
+            status=result.status,
+            chunks_created=result.chunks_created,
+            source=result.source,
             processing_time_ms=round(processing_time, 2),
         )
 
@@ -75,6 +72,6 @@ async def ingest_endpoint(
         return IngestResponse(
             status="error",
             chunks_created=0,
-            source=file.filename,
+            source=file.filename or "",
             processing_time_ms=round(processing_time, 2),
         )

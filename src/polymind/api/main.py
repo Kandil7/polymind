@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 import structlog
 from fastapi import FastAPI
 
@@ -16,6 +18,33 @@ from polymind.api.routes.query import router as query_router
 logger = structlog.get_logger()
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan — startup and shutdown hooks."""
+    # ── Startup ──────────────────────────────────────────
+    logger.info("polymind.startup", version=__version__)
+
+    # Pre-warm Qdrant connection
+    try:
+        from polymind.infrastructure.qdrant.client_factory import (
+            get_qdrant_client,
+        )
+
+        client = get_qdrant_client()
+        collections = client.get_collections()
+        logger.info(
+            "polymind.qdrant.connected",
+            collections=len(collections.collections),
+        )
+    except Exception as e:
+        logger.warning("polymind.qdrant.unavailable", error=str(e))
+
+    yield
+
+    # ── Shutdown ─────────────────────────────────────────
+    logger.info("polymind.shutdown")
+
+
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
     app = FastAPI(
@@ -28,6 +57,7 @@ def create_app() -> FastAPI:
         version=__version__,
         docs_url="/docs",
         redoc_url="/redoc",
+        lifespan=lifespan,
     )
 
     # ── Middleware ────────────────────────────────────────
@@ -44,15 +74,6 @@ def create_app() -> FastAPI:
     @app.get("/metrics")
     async def metrics():
         return metrics_endpoint()
-
-    # ── Lifecycle ────────────────────────────────────────
-    @app.on_event("startup")
-    async def startup() -> None:
-        logger.info("polymind.startup", version=__version__)
-
-    @app.on_event("shutdown")
-    async def shutdown() -> None:
-        logger.info("polymind.shutdown")
 
     return app
 

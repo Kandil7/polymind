@@ -78,6 +78,7 @@ markers = [
     "unit: pure unit tests (no I/O)",
     "integration: tests with real services",
     "eval: RAGAS + DeepEval benchmark suite",
+    "heavy: tests requiring full ML stack (sentence-transformers, pyarrow)",
 ]
 
 [build-system]

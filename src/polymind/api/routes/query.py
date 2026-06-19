@@ -24,7 +24,7 @@ async def query_endpoint(
     """Process a multimodal query.
 
     Accepts text questions with optional audio, image, or document attachments.
-    Routes through the full agent graph: Planner → Router → Specialists → RAG → Generator → Critic.
+    Routes through the full agent graph: Planner -> Router -> Specialists -> RAG -> Generator -> Critic.
     """
     start_time = time.time()
 
@@ -35,21 +35,20 @@ async def query_endpoint(
 
     audio_path = image_path = file_path = None
 
-    for upload, attr in [
-        (audio_file, "audio_path"),
-        (image_file, "image_path"),
-        (doc_file, "file_path"),
+    for upload, attr_name in [
+        (audio_file, "audio"),
+        (image_file, "image"),
+        (doc_file, "doc"),
     ]:
         if upload and upload.filename:
             tmp = Path(f"/tmp/{uuid.uuid4()}_{upload.filename}")
             with tmp.open("wb") as f:
                 shutil.copyfileobj(upload.file, f)
-            locals()[attr]  # noqa: B015
-            if attr == "audio_path":
+            if attr_name == "audio":
                 audio_path = str(tmp)
-            elif attr == "image_path":
+            elif attr_name == "image":
                 image_path = str(tmp)
-            elif attr == "file_path":
+            elif attr_name == "doc":
                 file_path = str(tmp)
 
     try:
@@ -73,6 +72,16 @@ async def query_endpoint(
             faithfulness = f.get("score", 0.5) if isinstance(f, dict) else f
 
         processing_time = (time.time() - start_time) * 1000
+
+        # Record Prometheus metrics
+        try:
+            from polymind.api.middleware.metrics import record_query
+
+            modality = result.get("modality", "text")
+            passed = result.get("passed_critic", False)
+            record_query(modality, passed, faithfulness)
+        except Exception:
+            pass  # Don't fail request if metrics recording fails
 
         return QueryResponse(
             answer=result.get("final_answer", ""),

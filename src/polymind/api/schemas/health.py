@@ -9,3 +9,4 @@ class HealthResponse(BaseModel):
     status: str = Field(default="ok", description="Service health status")
     version: str = Field(default="0.1.0", description="PolyMind version")
     service: str = Field(default="polymind", description="Service name")
+    checks: dict = Field(default_factory=dict, description="Dependency health checks")
