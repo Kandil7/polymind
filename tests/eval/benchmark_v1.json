@@ -1,0 +1,142 @@
+[
+  {
+    "id": "txt-001",
+    "modality": "text",
+    "query": "What is RAG and how does it work?",
+    "ground_truth": "RAG (Retrieval Augmented Generation) is a technique that combines information retrieval with text generation. It retrieves relevant documents from a knowledge base and uses them as context for an LLM to generate grounded answers.",
+    "source_doc": "rag_overview.txt"
+  },
+  {
+    "id": "txt-002",
+    "modality": "text",
+    "query": "What is the difference between dense and sparse retrieval?",
+    "ground_truth": "Dense retrieval uses embedding vectors for semantic similarity search, while sparse retrieval uses keyword-based methods like BM25. Dense retrieval captures semantic meaning, while sparse retrieval is exact keyword matching.",
+    "source_doc": "retrieval_methods.txt"
+  },
+  {
+    "id": "txt-003",
+    "modality": "text",
+    "query": "How does the Critic agent reduce hallucinations?",
+    "ground_truth": "The Critic agent evaluates generated answers against retrieved context using faithfulness scoring. If the faithfulness score drops below a threshold (0.72), it triggers re-retrieval or flags uncertainty.",
+    "source_doc": "critic_agent.txt"
+  },
+  {
+    "id": "txt-004",
+    "modality": "text",
+    "query": "What is LangGraph and why is it used for multi-agent systems?",
+    "ground_truth": "LangGraph is a framework for building stateful, multi-agent systems using graph-based workflows. It supports conditional routing, state management, and checkpointing, making it ideal for complex agent orchestration.",
+    "source_doc": "langgraph_docs.txt"
+  },
+  {
+    "id": "txt-005",
+    "modality": "text",
+    "query": "What are the advantages of using Qdrant over other vector databases?",
+    "ground_truth": "Qdrant offers native hybrid search (dense + sparse), rich payload filtering, built-in sharding and replication, and high performance at scale. It's purpose-built for vector search with sub-10ms query latency.",
+    "source_doc": "qdrant_overview.txt"
+  },
+  {
+    "id": "txt-006",
+    "modality": "text",
+    "query": "Explain the concept of HippoRAG and its advantages.",
+    "ground_truth": "HippoRAG is inspired by hippocampal indexing theory. It builds a Knowledge Graph from document passages and uses Personalized PageRank for multi-hop retrieval. It achieves 86% accuracy on multi-hop QA compared to 79% for standard vector RAG.",
+    "source_doc": "hipporag_paper.txt"
+  },
+  {
+    "id": "txt-007",
+    "modality": "text",
+    "query": "What is the purpose of the 4-layer memory system?",
+    "ground_truth": "The 4-layer memory system includes Working Memory (LangGraph state), Episodic Memory (conversation history via Mem0), Semantic Memory (extracted facts via Qdrant), and Procedural Memory (successful patterns). It enables context retention and learning across interactions.",
+    "source_doc": "memory_system.txt"
+  },
+  {
+    "id": "txt-008",
+    "modality": "text",
+    "query": "How does the Mixture-of-Agents approach work?",
+    "ground_truth": "Mixture-of-Agents uses multiple proposer models (e.g., Llama 3.3 70B, Qwen3-32B) to generate independent drafts, then an aggregator model synthesizes them into a single superior answer. This approach can outperform individual models.",
+    "source_doc": "moa_generator.txt"
+  },
+  {
+    "id": "txt-009",
+    "modality": "text",
+    "query": "What metrics does DeepEval provide for LLM evaluation?",
+    "ground_truth": "DeepEval provides metrics including Faithfulness, Answer Relevancy, Hallucination Rate, Contextual Precision, Contextual Recall, Toxicity, Bias, and more. It supports LLM-as-Judge evaluation with configurable thresholds.",
+    "source_doc": "deepeval_docs.txt"
+  },
+  {
+    "id": "txt-010",
+    "modality": "text",
+    "query": "What is the role of embeddings in RAG systems?",
+    "ground_truth": "Embeddings convert text into dense vector representations that capture semantic meaning. In RAG, embeddings enable similarity search to find relevant documents. BAAI/bge-m3 is used in PolyMind for its multilingual support and high quality.",
+    "source_doc": "embeddings_guide.txt"
+  },
+  {
+    "id": "txt-011",
+    "modality": "text",
+    "query": "How does the adaptive retrieval classifier work?",
+    "ground_truth": "The adaptive retrieval classifier analyzes query complexity to select the best retrieval strategy: SKIP for simple factual questions, STANDARD for single-hop lookups, HIPPORAG for multi-hop reasoning, and SPECULATIVE for time-sensitive queries.",
+    "source_doc": "adaptive_rag.txt"
+  },
+  {
+    "id": "txt-012",
+    "modality": "text",
+    "query": "What is the significance of faithfulness scoring in RAG?",
+    "ground_truth": "Faithfulness scoring measures whether the generated answer is grounded in the retrieved context. A high faithfulness score means the answer is supported by evidence, while a low score indicates potential hallucination. PolyMind uses 0.72 as the threshold.",
+    "source_doc": "evaluation_metrics.txt"
+  },
+  {
+    "id": "txt-013",
+    "modality": "text",
+    "query": "Explain the document ingestion pipeline in PolyMind.",
+    "ground_truth": "The ingestion pipeline takes files (PDF, CSV, text), extracts text content, chunks it using recursive or semantic chunking, embeds the chunks using BAAI/bge-m3, and stores them in Qdrant with metadata for source tracking and modality filtering.",
+    "source_doc": "ingestion_pipeline.txt"
+  },
+  {
+    "id": "txt-014",
+    "modality": "text",
+    "query": "What is the retry loop in the agent graph?",
+    "ground_truth": "When the Critic agent rejects an answer (faithfulness below threshold), the system retries by re-retrieving context with an expanded query. The retry loop has a maximum of 2 retries to prevent infinite loops. After max retries, the answer is passed with a low confidence flag.",
+    "source_doc": "agent_graph.txt"
+  },
+  {
+    "id": "txt-015",
+    "modality": "text",
+    "query": "How does Groq integration benefit PolyMind?",
+    "ground_truth": "Groq provides ultra-fast LLM inference (280-560 tokens/second) via their API. PolyMind uses Llama 3.3 70B for reasoning (Generator, Critic) and Llama 3.1 8B for fast tasks (Planner, Router). This eliminates the need for local GPU inference.",
+    "source_doc": "groq_integration.txt"
+  },
+  {
+    "id": "txt-016",
+    "modality": "text",
+    "query": "What is the Clean Architecture pattern used in PolyMind?",
+    "ground_truth": "PolyMind uses 4-layer Clean Architecture: Domain (entities, interfaces), Application (use cases, agents), Infrastructure (Qdrant, HuggingFace, n8n), and API (FastAPI). Inner layers never depend on outer layers, ensuring testability and swappability.",
+    "source_doc": "architecture.txt"
+  },
+  {
+    "id": "txt-017",
+    "modality": "text",
+    "query": "How does the semantic memory consolidation work?",
+    "ground_truth": "When the same query pattern repeats 3+ times, the system extracts a reusable semantic fact using an LLM. This fact is stored in the semantic memory (Qdrant) for faster recall in future similar queries, reducing retrieval overhead.",
+    "source_doc": "memory_consolidation.txt"
+  },
+  {
+    "id": "txt-018",
+    "modality": "text",
+    "query": "What testing strategy does PolyMind use?",
+    "ground_truth": "PolyMind uses pytest with 80%+ coverage target. Unit tests mock all I/O, integration tests use real Qdrant, and eval tests run RAGAS benchmarks. The CI gate fails PRs when faithfulness drops below 0.72.",
+    "source_doc": "testing_strategy.txt"
+  },
+  {
+    "id": "txt-019",
+    "modality": "text",
+    "query": "Explain the branching strategy for PolyMind development.",
+    "ground_truth": "PolyMind uses Git Flow: main (production, protected), develop (integration), phase/X-name (per phase), feat/XXX (features), fix/XXX (bugs), docs/XXX (documentation). All PRs require CI green + eval gate green before merge.",
+    "source_doc": "branching_strategy.txt"
+  },
+  {
+    "id": "txt-020",
+    "modality": "text",
+    "query": "What are the key performance metrics for PolyMind?",
+    "ground_truth": "Key metrics: Faithfulness >= 0.72, Answer Relevancy >= 0.75, Hallucination Rate <= 0.25, P95 latency < 800ms for text queries, 50+ concurrent users, and 87% answer relevancy on internal benchmark.",
+    "source_doc": "performance_metrics.txt"
+  }
+]

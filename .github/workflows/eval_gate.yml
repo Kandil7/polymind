@@ -1,0 +1,56 @@
+name: Eval Gate
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+
+    env:
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Seed Qdrant test data
+        run: poetry run python scripts/seed_qdrant.py || true
+
+      - name: Run eval harness
+        run: |
+          poetry run pytest tests/eval -v --tb=short \
+            --json-report \
+            --json-report-file=eval_results.json
+
+      - name: Upload eval results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-results-${{ github.sha }}
+          path: eval_results.json
+
+      - name: Check eval thresholds
+        run: |
+          python -c "
+          import json
+          data = json.load(open('eval_results.json'))
+          passed = data.get('summary', {}).get('passed', 0)
+          total = data.get('summary', {}).get('total', 0)
+          print(f'Eval: {passed}/{total} tests passed')
+          if passed < total:
+              print('FAIL: Some eval tests failed')
+              exit(1)
+          print('PASS: All eval tests passed')
+          "
