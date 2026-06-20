@@ -47,11 +47,20 @@ def run(state: PolyMindState) -> PolyMindState:
                 context += f"\n\n[Table Analysis]\n{answer}"
 
         # Generate answer using LLM
-        try:
-            answer = _generate_with_llm(query, context)
-        except Exception as e:
-            logger.error("generator.llm_failed", error=str(e))
+        # Check if LLM is available via degradation manager
+        from polymind.infrastructure.degradation import degradation
+
+        if degradation.should_use_heuristic_generation():
+            logger.warning("generator.degraded", reason="llm_unavailable")
             answer = _generate_fallback(query, context)
+        else:
+            try:
+                answer = _generate_with_llm(query, context)
+                degradation.record_service_success("llm")
+            except Exception as e:
+                degradation.record_service_failure("llm")
+                logger.error("generator.llm_failed", error=str(e))
+                answer = _generate_fallback(query, context)
 
         # Extract citations from chunks
         citations = [

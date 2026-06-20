@@ -37,6 +37,19 @@ def run(state: PolyMindState) -> PolyMindState:
         logger.info("rag.start", strategy=strategy, query_length=len(query))
 
         try:
+            # Check if retrieval should be skipped due to service degradation
+            from polymind.infrastructure.degradation import degradation
+
+            if degradation.should_skip_retrieval():
+                logger.warning("rag.degraded", reason="qdrant_or_embedder_unavailable")
+                if span:
+                    span.set_attribute("rag.degraded", True)
+                return {
+                    **state,
+                    "retrieved_chunks": [],
+                    "retrieval_scores": [],
+                }
+
             if strategy == "skip":
                 # Skip retrieval — rely on LLM parametric knowledge
                 logger.info("rag.skip", reason="simple_factual_query")
@@ -47,6 +60,10 @@ def run(state: PolyMindState) -> PolyMindState:
                 }
 
             chunks = _retrieve_by_strategy(query, state, strategy)
+
+            # Record success for circuit breaker
+            degradation.record_service_success("qdrant")
+            degradation.record_service_success("embedder")
 
             retrieved = [
                 {
@@ -69,6 +86,14 @@ def run(state: PolyMindState) -> PolyMindState:
             }
 
         except Exception as e:
+            # Record failure for circuit breaker
+            try:
+                from polymind.infrastructure.degradation import degradation
+                degradation.record_service_failure("qdrant")
+                degradation.record_service_failure("embedder")
+            except Exception:
+                pass
+
             logger.error("rag.failed", error=str(e), strategy=strategy)
             return {
                 **state,

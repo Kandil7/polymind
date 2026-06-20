@@ -16,8 +16,7 @@ router = APIRouter()
 async def health_check() -> HealthResponse:
     """Return service health status with dependency checks.
 
-    Checks Qdrant connectivity and LLM API key presence without
-    loading heavy ML models (embedder, transformers, etc.).
+    Checks Qdrant connectivity, LLM API key, and circuit breaker status.
     """
     checks: dict[str, object] = {}
     overall_status = "ok"
@@ -52,6 +51,19 @@ async def health_check() -> HealthResponse:
         "status": "configured",
         "model": "BAAI/bge-m3",
     }
+
+    # Check circuit breaker status
+    try:
+        from polymind.infrastructure.degradation import degradation
+
+        degradation_status = degradation.get_status()
+        checks["degradation"] = degradation_status
+
+        # Update overall status based on degradation
+        if degradation_status["overall"] == "degraded":
+            overall_status = "degraded"
+    except Exception:
+        pass
 
     return HealthResponse(
         status=overall_status,

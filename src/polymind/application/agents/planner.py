@@ -106,6 +106,15 @@ def _classify_intent(query: str) -> str:
     if cached is not None:
         return cached
 
+    # Check if LLM is available via degradation manager
+    from polymind.infrastructure.degradation import degradation
+
+    if degradation.should_use_heuristic_classification():
+        logger.debug("planner.intent.heuristic_fallback", reason="llm_unavailable")
+        intent = _classify_intent_keywords(query)
+        store_classification(query, intent)
+        return intent
+
     # Try LLM classification first
     try:
         intent = _classify_intent_llm(query)
