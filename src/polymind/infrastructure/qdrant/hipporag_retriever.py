@@ -142,6 +142,9 @@ class HippoRAGRetriever(IRetriever):
     async def index(self, chunks: list[DocumentChunk]) -> None:
         """Index chunks into the Knowledge Graph.
 
+        Uses LLM-based triple extraction when available, falls back
+        to pattern matching for speed.
+
         Args:
             chunks: List of DocumentChunks to index.
         """
@@ -149,8 +152,8 @@ class HippoRAGRetriever(IRetriever):
             pid = f"p{len(self._passages)}"
             self._passages[pid] = chunk.text
 
-            # Simple triple extraction using text splitting
-            triples = self._extract_triples_simple(chunk.text)
+            # Try LLM extraction first, fall back to pattern matching
+            triples = self._extract_triples(chunk.text)
 
             for subj, rel, obj in triples:
                 for node in [subj, obj]:
@@ -172,6 +175,63 @@ class HippoRAGRetriever(IRetriever):
             nodes=len(self._graph.nodes),
             edges=len(self._graph.edges),
         )
+
+    def _extract_triples(self, text: str) -> list[tuple[str, str, str]]:
+        """Extract triples using LLM if available, else pattern matching."""
+        try:
+            return self._extract_triples_llm(text)
+        except Exception as e:
+            logger.debug("hipporag.llm_triple_failed", error=str(e))
+            return self._extract_triples_simple(text)
+
+    def _extract_triples_llm(self, text: str) -> list[tuple[str, str, str]]:
+        """Extract subject-predicate-object triples using Groq LLM.
+
+        Uses Llama 3.1 8B for fast, structured extraction.
+        """
+        import json
+        import re
+
+        from langchain_core.messages import HumanMessage
+
+        from polymind.infrastructure.llm.llm_factory import LLMFactory
+
+        factory = LLMFactory()
+        llm = factory.get_llm(tier="fast")
+
+        # Truncate long texts to fit context window
+        truncated = text[:2000] if len(text) > 2000 else text
+
+        prompt = f"""Extract subject-predicate-object triples from this text.
+Return a JSON array of triples. Each triple is [subject, predicate, object].
+Use concise, normalized entity names (lowercase, no articles).
+Extract 3-10 triples. Focus on factual relationships.
+
+Text: {truncated}
+
+Reply with ONLY a JSON array:"""
+
+        response = llm.invoke([HumanMessage(content=prompt)])
+        content = response.content.strip()
+
+        # Parse JSON response
+        json_match = re.search(r'\[.*\]', content, re.DOTALL)
+        if json_match:
+            try:
+                raw_triples = json.loads(json_match.group())
+                triples = []
+                for t in raw_triples:
+                    if isinstance(t, list) and len(t) == 3:
+                        subj, pred, obj = str(t[0]).strip(), str(t[1]).strip(), str(t[2]).strip()
+                        if subj and pred and obj:
+                            triples.append((subj.lower(), pred.lower(), obj.lower()))
+                if triples:
+                    logger.debug("hipporag.llm_triples", count=len(triples))
+                    return triples
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+        raise ValueError("Failed to parse LLM triple extraction response")
 
     def _extract_triples_simple(self, text: str) -> list[tuple[str, str, str]]:
         """Extract simple triples from text using pattern matching.
