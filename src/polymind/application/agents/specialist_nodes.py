@@ -13,11 +13,13 @@ logger = structlog.get_logger()
 def asr_node(state: PolyMindState) -> PolyMindState:
     """Process audio input using ASR specialist.
 
+    Tries local Whisper first, falls back to Groq hosted Whisper.
     Reads: audio_path
     Writes: asr_transcript
     """
     audio_path = state.get("audio_path", "")
 
+    # Try local Whisper first
     try:
         from polymind.infrastructure.specialists.asr_wrapper import ASRWrapper
 
@@ -25,12 +27,26 @@ def asr_node(state: PolyMindState) -> PolyMindState:
         result = run_async(asr.process(audio_path))
         transcript = result.get("text", "")
 
-        logger.info("asr.done", transcript_length=len(transcript))
+        logger.info("asr.done", provider="local_whisper", transcript_length=len(transcript))
         return {**state, "asr_transcript": transcript}
 
-    except Exception as e:
-        logger.error("asr.failed", error=str(e))
-        return {**state, "asr_transcript": f"ASR failed: {e}"}
+    except Exception as local_err:
+        logger.debug("asr.local_failed", error=str(local_err))
+
+    # Fallback: Groq hosted Whisper
+    try:
+        from polymind.infrastructure.llm.groq_asr import GroqASRWrapper
+
+        asr = GroqASRWrapper()
+        result = run_async(asr.process(audio_path))
+        transcript = result.get("text", "")
+
+        logger.info("asr.done", provider="groq_whisper", transcript_length=len(transcript))
+        return {**state, "asr_transcript": transcript}
+
+    except Exception as groq_err:
+        logger.error("asr.all_providers_failed", local_error=str(local_err), groq_error=str(groq_err))
+        return {**state, "asr_transcript": f"ASR failed: {groq_err}"}
 
 
 def vqa_node(state: PolyMindState) -> PolyMindState:

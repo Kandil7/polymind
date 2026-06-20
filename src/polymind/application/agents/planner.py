@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import re
 from pathlib import Path
 
 import structlog
@@ -9,6 +11,18 @@ import structlog
 from polymind.application.state import PolyMindState
 
 logger = structlog.get_logger()
+
+# ── Intent labels ────────────────────────────────────────
+VALID_INTENTS = frozenset({
+    "summarization",
+    "comparison",
+    "factual_qa",
+    "translation",
+    "extraction",
+    "reasoning",
+    "creative",
+    "general",
+})
 
 
 def run(state: PolyMindState) -> PolyMindState:
@@ -30,7 +44,7 @@ def run(state: PolyMindState) -> PolyMindState:
         ext = Path(fpath).suffix.lower()
         modality = "table" if ext in (".csv", ".xlsx", ".xls") else "document"
 
-    # ── Classify intent ──
+    # ── Classify intent (LLM-first, keyword fallback) ──
     intent = _classify_intent(query)
 
     # ── Recall memory context ──
@@ -72,10 +86,62 @@ def _recall_memory(query: str, user_id: str) -> tuple[list[dict], list[str]]:
 
 
 def _classify_intent(query: str) -> str:
-    """Classify query intent using keyword matching.
+    """Classify query intent using LLM with keyword fallback.
 
-    In production, replace with LLM-based classification.
+    Uses Groq's fast tier (Llama 3.1 8B) for intent classification.
+    Falls back to keyword-based classification if LLM is unavailable.
     """
+    # Try LLM classification first
+    try:
+        return _classify_intent_llm(query)
+    except Exception as e:
+        logger.debug("planner.intent.llm_failed", error=str(e))
+        return _classify_intent_keywords(query)
+
+
+def _classify_intent_llm(query: str) -> str:
+    """Classify intent using Groq LLM."""
+    from langchain_core.messages import HumanMessage
+
+    from polymind.infrastructure.llm.llm_factory import LLMFactory
+
+    factory = LLMFactory()
+    llm = factory.get_llm(tier="fast")
+
+    prompt = f"""Classify this user query into exactly ONE intent category.
+
+Categories:
+- summarization: user wants a summary, TLDR, or brief overview
+- comparison: user wants to compare two or more things
+- factual_qa: user asks a specific factual question (what, who, when, where, how, why)
+- translation: user wants text translated to another language
+- extraction: user wants specific information extracted from text
+- reasoning: user wants analysis, explanation, or logical reasoning
+- creative: user wants creative content (writing, brainstorming, ideas)
+- general: none of the above
+
+Query: {query}
+
+Reply with ONLY the category name, nothing else:"""
+
+    response = llm.invoke([HumanMessage(content=prompt)])
+    intent = response.content.strip().lower()
+
+    # Validate and normalize
+    intent = intent.strip().strip('"').strip("'").strip(".")
+    if intent in VALID_INTENTS:
+        return intent
+
+    # Try partial matching
+    for valid in VALID_INTENTS:
+        if valid in intent:
+            return valid
+
+    return "general"
+
+
+def _classify_intent_keywords(query: str) -> str:
+    """Fallback keyword-based intent classification."""
     q = query.lower()
 
     summary_keywords = ("summarize", "summary", "tldr", "tl;dr", "brief")
@@ -86,12 +152,24 @@ def _classify_intent(query: str) -> str:
     if any(w in q for w in compare_keywords):
         return "comparison"
 
-    qa_keywords = ("what", "who", "when", "where", "how", "why", "which")
-    if any(q.startswith(w) or f" {w} " in q for w in qa_keywords):
-        return "factual_qa"
-
     translate_keywords = ("translate", "translation", "แปล", "ترجم")
     if any(w in q for w in translate_keywords):
         return "translation"
+
+    extract_keywords = ("extract", "list", "find all", "pull out")
+    if any(w in q for w in extract_keywords):
+        return "extraction"
+
+    reasoning_keywords = ("explain", "why", "analyze", "reason", "think")
+    if any(w in q for w in reasoning_keywords):
+        return "reasoning"
+
+    creative_keywords = ("write", "create", "story", "poem", "brainstorm")
+    if any(w in q for w in creative_keywords):
+        return "creative"
+
+    qa_keywords = ("what", "who", "when", "where", "how", "which")
+    if any(q.startswith(w) or f" {w} " in q for w in qa_keywords):
+        return "factual_qa"
 
     return "general"

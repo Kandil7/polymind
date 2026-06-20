@@ -56,24 +56,18 @@ async def query_endpoint(
                 file_path = str(tmp)
 
     try:
-        from polymind.application.graph import build_graph
+        from polymind.application.use_cases.query_use_case import QueryUseCase
+        from polymind.domain.entities.query import Query
 
-        graph = build_graph()
-
-        result = graph.invoke({
-            "user_query": question,
-            "user_id": user_id,
-            "audio_path": audio_path,
-            "image_path": image_path,
-            "file_path": file_path,
-        })
-
-        # Extract confidence from critic scores
-        scores = result.get("critic_scores", {})
-        faithfulness = 0.5
-        if isinstance(scores, dict):
-            f = scores.get("faithfulness", 0.5)
-            faithfulness = f.get("score", 0.5) if isinstance(f, dict) else f
+        use_case = QueryUseCase()
+        query = Query(
+            text=question,
+            user_id=user_id,
+            audio_path=audio_path,
+            image_path=image_path,
+            file_path=file_path,
+        )
+        result = await use_case.execute(query)
 
         processing_time = (time.time() - start_time) * 1000
 
@@ -81,19 +75,19 @@ async def query_endpoint(
         try:
             from polymind.api.middleware.metrics import record_query
 
-            modality = result.get("modality", "text")
-            passed = result.get("passed_critic", False)
-            record_query(modality, passed, faithfulness)
+            faithfulness = result.answer.confidence
+            passed = result.answer.confidence >= 0.7
+            record_query(result.modality, passed, faithfulness)
         except Exception:
             pass  # Don't fail request if metrics recording fails
 
         return QueryResponse(
-            answer=result.get("final_answer", ""),
-            modality=result.get("modality", "text"),
-            confidence=faithfulness,
-            citations=result.get("citations", []),
-            critic_scores=scores,
-            retry_count=result.get("retry_count", 0),
+            answer=result.answer.text,
+            modality=result.modality,
+            confidence=result.answer.confidence,
+            citations=[{"source": c.metadata.source, "score": c.score or 0.0} for c in result.citations],
+            critic_scores={name: {"score": s.value, "passed": s.passed} for name, s in result.critic_scores.items()},
+            retry_count=result.retry_count,
             processing_time_ms=round(processing_time, 2),
         )
 

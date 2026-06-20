@@ -8,6 +8,14 @@ from polymind.application.state import PolyMindState
 
 logger = structlog.get_logger()
 
+# ── Strategy labels ──────────────────────────────────────
+VALID_STRATEGIES = frozenset({
+    "skip",
+    "standard",
+    "hipporag",
+    "speculative",
+})
+
 
 def run(state: PolyMindState) -> PolyMindState:
     """Classify retrieval strategy based on query complexity.
@@ -49,7 +57,57 @@ def decide(state: PolyMindState) -> str:
 
 
 def _classify_retrieval(query: str) -> str:
-    """Classify retrieval strategy from query complexity."""
+    """Classify retrieval strategy using LLM with keyword fallback.
+
+    Uses Groq's fast tier for strategy classification.
+    Falls back to keyword patterns if LLM is unavailable.
+    """
+    try:
+        return _classify_retrieval_llm(query)
+    except Exception as e:
+        logger.debug("router.strategy.llm_failed", error=str(e))
+        return _classify_retrieval_keywords(query)
+
+
+def _classify_retrieval_llm(query: str) -> str:
+    """Classify retrieval strategy using Groq LLM."""
+    from langchain_core.messages import HumanMessage
+
+    from polymind.infrastructure.llm.llm_factory import LLMFactory
+
+    factory = LLMFactory()
+    llm = factory.get_llm(tier="fast")
+
+    prompt = f"""Classify this query's retrieval strategy for a RAG system.
+
+Strategies:
+- skip: Simple factual question answerable from parametric knowledge (e.g., "What is the capital of France?")
+- standard: Single-hop document lookup (most queries)
+- hipporag: Multi-hop reasoning requiring connections across documents (e.g., "How does X relate to Y?", "Compare A and B")
+- speculative: Time-sensitive query needing current/recent information (e.g., "latest news", "current status")
+
+Query: {query}
+
+Reply with ONLY the strategy name, nothing else:"""
+
+    response = llm.invoke([HumanMessage(content=prompt)])
+    strategy = response.content.strip().lower()
+
+    # Validate and normalize
+    strategy = strategy.strip().strip('"').strip("'").strip(".")
+    if strategy in VALID_STRATEGIES:
+        return strategy
+
+    # Try partial matching
+    for valid in VALID_STRATEGIES:
+        if valid in strategy:
+            return valid
+
+    return "standard"
+
+
+def _classify_retrieval_keywords(query: str) -> str:
+    """Fallback keyword-based retrieval strategy classification."""
     q = query.lower()
 
     # Multi-hop signals → HippoRAG
