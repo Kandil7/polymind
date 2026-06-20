@@ -46,7 +46,7 @@ def run(state: PolyMindState) -> PolyMindState:
             if answer := tableqa.get("answer"):
                 context += f"\n\n[Table Analysis]\n{answer}"
 
-        # Generate answer using LLM
+        # Generate answer using LLM or MoA
         # Check if LLM is available via degradation manager
         from polymind.infrastructure.degradation import degradation
 
@@ -55,7 +55,15 @@ def run(state: PolyMindState) -> PolyMindState:
             answer = _generate_fallback(query, context)
         else:
             try:
-                answer = _generate_with_llm(query, context)
+                # Check if MoA mode is enabled
+                use_moa = state.get("use_moa", False)
+
+                if use_moa and len(chunks) > 0:
+                    # Use Mixture-of-Agents for higher quality
+                    answer = _generate_with_moa(query, context)
+                else:
+                    answer = _generate_with_llm(query, context)
+
                 degradation.record_service_success("llm")
             except Exception as e:
                 degradation.record_service_failure("llm")
@@ -128,3 +136,16 @@ def _generate_fallback(query: str, context: str) -> str:
         f"Based on the available context, here is what I found:\n\n"
         f"{context[:1000]}"
     )
+
+
+def _generate_with_moa(query: str, context: str) -> str:
+    """Generate answer using Mixture-of-Agents.
+
+    Spawns multiple generator agents with different prompts/temperatures,
+    then merges the best parts into a final answer.
+    """
+    from polymind.infrastructure.async_utils import run_async
+
+    from polymind.infrastructure.moa import generate_with_moa
+
+    return run_async(generate_with_moa(query, context, num_agents=3))
