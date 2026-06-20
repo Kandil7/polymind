@@ -14,6 +14,7 @@ from polymind.api.middleware.logging import RequestLoggingMiddleware
 from polymind.api.middleware.metrics import PrometheusMiddleware, metrics_endpoint
 from polymind.api.middleware.rate_limit import RateLimitMiddleware
 from polymind.api.routes.eval import router as eval_router
+from polymind.api.routes.feedback import router as feedback_router
 from polymind.api.routes.health import router as health_router
 from polymind.api.routes.ingest import router as ingest_router
 from polymind.api.routes.query import router as query_router
@@ -105,6 +106,7 @@ def create_app() -> FastAPI:
     app.include_router(query_router, prefix="/query", tags=["Query"])
     app.include_router(ingest_router, prefix="/ingest", tags=["Ingest"])
     app.include_router(eval_router, prefix="/eval", tags=["Eval"])
+    app.include_router(feedback_router, prefix="/feedback", tags=["Feedback"])
 
     # ── Metrics endpoint ─────────────────────────────────
     @app.get("/metrics")

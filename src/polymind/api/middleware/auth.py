@@ -22,6 +22,7 @@ PUBLIC_PATHS = frozenset({
     "/redoc",
     "/openapi.json",
     "/metrics",
+    "/feedback",  # Feedback can be submitted without auth
 })
 
 
