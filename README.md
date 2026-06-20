@@ -8,7 +8,7 @@ A production-grade AI system that routes queries across 7+ HuggingFace task type
 
 [![CI](https://github.com/your-username/polymind/actions/workflows/ci.yml/badge.svg)](https://github.com/your-username/polymind/actions/workflows/ci.yml)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-168%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-200%2B%20passing-brightgreen.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-black.svg)](https://github.com/astral-sh/ruff)
 
@@ -100,6 +100,15 @@ Episodic (conversation history), Semantic (extracted facts), Procedural (success
 ### ⚡ Groq Integration
 Ultra-fast LLM inference (280-560 tokens/second) via Groq API — no GPU required for the LLM calls.
 
+### 🔄 Streaming SSE
+Real-time progress updates as each agent node completes. Users see "Planning → Routing → Retrieving → Generating → Evaluating" instead of waiting for the full response.
+
+### 🔒 Production Security
+Per-IP rate limiting, API key authentication, and CORS middleware — ready for deployment.
+
+### 🎯 LLM-Based Classification
+Intent classification (8 categories) and retrieval strategy selection (4 strategies) powered by LLM with keyword fallback for reliability.
+
 ---
 
 ## Tech Stack
@@ -172,6 +181,13 @@ make dev
 ```bash
 curl -X POST http://localhost:8000/query/ \
   -F "question=What is RAG and how does it work?"
+```
+
+**Streaming Query (SSE)**
+```bash
+curl -X POST http://localhost:8000/query/stream \
+  -F "question=What is RAG?" \
+  -N  # Disable buffering
 ```
 
 **Audio Transcription**
@@ -295,8 +311,8 @@ make format
 | 4 | Agent Graph | v0.4.0 | 147 | 10-node LangGraph with retry loop |
 | 5 | Memory | v0.5.0 | 156 | 4-layer memory system |
 | 6 | Eval & CI | v0.6.0 | 168 | RAGAS harness + GitHub Actions gate |
-| 7 | API | v0.7.0 | — | Full endpoints + observability |
-| 8 | Demo | v1.0.0 | — | Streamlit app + Modal GPU |
+| 7 | API | v0.7.0 | 180 | Full endpoints + observability |
+| 8 | Demo | v1.0.0 | 200+ | Streamlit app + Modal GPU + Streaming SSE |
 
 ---
 
