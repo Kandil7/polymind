@@ -40,6 +40,9 @@ def run(state: PolyMindState) -> PolyMindState:
         # Store episode in memory
         _store_episode(query, answer, faithfulness, modality, user_id)
 
+        # Run memory consolidation pipeline
+        _consolidate_memory(query, answer, scores, modality, user_id)
+
         if span:
             span.set_attribute("synthesizer.confidence", confidence)
             span.set_attribute("synthesizer.citations", len(citations))
@@ -79,6 +82,33 @@ def _store_episode(
         )
     except Exception as e:
         logger.debug("synthesizer.episode_store.failed", error=str(e))
+
+
+def _consolidate_memory(
+    query: str,
+    answer: str,
+    scores: dict,
+    modality: str,
+    user_id: str,
+) -> None:
+    """Run memory consolidation pipeline asynchronously."""
+    try:
+        from polymind.infrastructure.async_utils import run_async
+        from polymind.infrastructure.memory.consolidation import (
+            ConsolidationPipeline,
+        )
+
+        pipeline = ConsolidationPipeline(user_id=user_id)
+
+        # Run consolidation (non-blocking)
+        run_async(pipeline.consolidate(
+            query=query,
+            answer=answer,
+            critic_scores=scores,
+            modality=modality,
+        ))
+    except Exception as e:
+        logger.debug("synthesizer.consolidation.failed", error=str(e))
 
 
 def _calculate_confidence(faithfulness: float, retry_count: int) -> float:
