@@ -2,7 +2,7 @@
 
 Supports multiple retrieval strategies:
 - skip: No retrieval (simple factual queries)
-- standard: Dense vector search via Qdrant
+- standard: Dense vector search via Qdrant + cross-encoder reranking
 - hipporag: Knowledge Graph + Personalized PageRank
 - speculative: Draft-first, verify-after (standard + extra validation)
 """
@@ -15,6 +15,10 @@ from polymind.application.state import PolyMindState
 from polymind.infrastructure.async_utils import run_async
 
 logger = structlog.get_logger()
+
+# Retrieve more candidates for reranking
+INITIAL_RETRIEVAL_K = 20
+FINAL_TOP_K = 5
 
 
 def run(state: PolyMindState) -> PolyMindState:
@@ -94,11 +98,17 @@ def _retrieve_by_strategy(
 ) -> list:
     """Route retrieval to the appropriate strategy implementation."""
     if strategy == "hipporag":
-        return _retrieve_hipporag(query, state)
+        chunks = _retrieve_hipporag(query, state)
     elif strategy == "speculative":
-        return _retrieve_speculative(query, state)
+        chunks = _retrieve_speculative(query, state)
     else:
-        return _retrieve_standard(query, state)
+        chunks = _retrieve_standard(query, state)
+
+    # Apply reranking to all strategies (except skip)
+    if chunks:
+        chunks = _rerank(query, chunks)
+
+    return chunks
 
 
 def _retrieve_standard(query: str, state: PolyMindState) -> list:
@@ -113,7 +123,8 @@ def _retrieve_standard(query: str, state: PolyMindState) -> list:
     embedder = Embedder()
     repo = QdrantChunkRepository(client, embedder)
 
-    return run_async(repo.retrieve(query, top_k=5))
+    # Retrieve more candidates for reranking
+    return run_async(repo.retrieve(query, top_k=INITIAL_RETRIEVAL_K))
 
 
 def _retrieve_hipporag(query: str, state: PolyMindState) -> list:
@@ -133,7 +144,7 @@ def _retrieve_hipporag(query: str, state: PolyMindState) -> list:
             logger.info("hipporag.empty_fallback")
             return _retrieve_standard(query, state)
 
-        return run_async(retriever.retrieve(query, top_k=5))
+        return run_async(retriever.retrieve(query, top_k=INITIAL_RETRIEVAL_K))
 
     except Exception as e:
         logger.warning("hipporag.failed_fallback", error=str(e))
@@ -153,4 +164,60 @@ def _retrieve_speculative(query: str, state: PolyMindState) -> list:
     repo = QdrantChunkRepository(client, embedder)
 
     # Retrieve more chunks for speculative verification
-    return run_async(repo.retrieve(query, top_k=8))
+    return run_async(repo.retrieve(query, top_k=INITIAL_RETRIEVAL_K))
+
+
+def _rerank(query: str, chunks: list) -> list:
+    """Rerank retrieved chunks using cross-encoder.
+
+    Args:
+        query: The search query.
+        chunks: List of DocumentChunks from initial retrieval.
+
+    Returns:
+        Reranked list of DocumentChunks (top FINAL_TOP_K).
+    """
+    if len(chunks) <= FINAL_TOP_K:
+        return chunks
+
+    try:
+        from polymind.domain.entities.chunk import ChunkMetadata, DocumentChunk
+        from polymind.infrastructure.rag.reranker import CrossEncoderReranker
+
+        reranker = CrossEncoderReranker()
+
+        if not reranker.is_available:
+            # Fallback: just return first FINAL_TOP_K
+            logger.debug("reranker.unavailable")
+            return chunks[:FINAL_TOP_K]
+
+        # Extract texts for reranking
+        texts = [c.text for c in chunks]
+
+        # Rerank
+        ranked = reranker.rerank(query, texts, top_k=FINAL_TOP_K)
+
+        # Rebuild chunks with reranked scores
+        reranked_chunks = []
+        for idx, score in ranked:
+            original = chunks[idx]
+            reranked_chunks.append(
+                DocumentChunk(
+                    text=original.text,
+                    metadata=original.metadata,
+                    score=score,
+                )
+            )
+
+        logger.info(
+            "reranker.applied",
+            before=len(chunks),
+            after=len(reranked_chunks),
+            top_score=f"{reranked_chunks[0].score:.3f}" if reranked_chunks else "N/A",
+        )
+
+        return reranked_chunks
+
+    except Exception as e:
+        logger.warning("reranker.failed_fallback", error=str(e))
+        return chunks[:FINAL_TOP_K]
