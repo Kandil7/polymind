@@ -61,12 +61,25 @@ def _classify_retrieval(query: str) -> str:
 
     Uses Groq's fast tier for strategy classification.
     Falls back to keyword patterns if LLM is unavailable.
+    Caches results for identical queries.
     """
+    # Check cache first
+    from polymind.infrastructure.cache import cache, cache_key
+
+    key = cache_key("strategy", query)
+    cached = cache.get(key)
+    if cached is not None:
+        return cached
+
     try:
-        return _classify_retrieval_llm(query)
+        strategy = _classify_retrieval_llm(query)
     except Exception as e:
         logger.debug("router.strategy.llm_failed", error=str(e))
-        return _classify_retrieval_keywords(query)
+        strategy = _classify_retrieval_keywords(query)
+
+    # Cache the result
+    cache.set(key, strategy, ttl=3600)
+    return strategy
 
 
 def _classify_retrieval_llm(query: str) -> str:

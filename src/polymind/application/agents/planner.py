@@ -90,13 +90,25 @@ def _classify_intent(query: str) -> str:
 
     Uses Groq's fast tier (Llama 3.1 8B) for intent classification.
     Falls back to keyword-based classification if LLM is unavailable.
+    Caches results for identical queries.
     """
+    # Check cache first
+    from polymind.infrastructure.cache import cached_classification, store_classification
+
+    cached = cached_classification(query)
+    if cached is not None:
+        return cached
+
     # Try LLM classification first
     try:
-        return _classify_intent_llm(query)
+        intent = _classify_intent_llm(query)
     except Exception as e:
         logger.debug("planner.intent.llm_failed", error=str(e))
-        return _classify_intent_keywords(query)
+        intent = _classify_intent_keywords(query)
+
+    # Cache the result
+    store_classification(query, intent)
+    return intent
 
 
 def _classify_intent_llm(query: str) -> str:
