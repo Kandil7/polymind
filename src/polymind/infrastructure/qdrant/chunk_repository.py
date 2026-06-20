@@ -81,16 +81,17 @@ class QdrantChunkRepository(IRetriever):
                 match=MatchValue(value=modality_filter),
             )
 
-        results = self._client.search(
+        # qdrant-client >= 1.12 uses query_points instead of search
+        results = self._client.query_points(
             collection_name=self._collection,
-            query_vector=query_vec,
+            query=query_vec,
             query_filter=query_filter,
             limit=top_k,
             with_payload=True,
         )
 
         chunks = []
-        for r in results:
+        for r in results.points:
             payload = r.payload or {}
             chunk = DocumentChunk(
                 text=payload.get("text", ""),

@@ -92,12 +92,14 @@ class SemanticStore(IMemoryStore):
         """
         try:
             embedding = self._embedder.embed_single(query)
-            results = self._client.search(
+
+            results = self._client.query_points(
                 collection_name=self._collection,
-                query_vector=embedding,
+                query=embedding,
                 limit=top_k,
+                with_payload=True,
             )
-            facts = [r.payload.get("fact", "") for r in results if r.payload]
+            facts = [r.payload.get("fact", "") for r in results.points if r.payload]
             logger.info("semantic.recalled", count=len(facts))
             return facts
         except Exception as e:

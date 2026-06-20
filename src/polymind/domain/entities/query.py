@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
-if TYPE_CHECKING:
-    from polymind.domain.entities.answer import Answer
-    from polymind.domain.entities.chunk import DocumentChunk
+from polymind.domain.entities.answer import Answer
+from polymind.domain.entities.chunk import DocumentChunk
 
 
 class ScoreResult(BaseModel):
