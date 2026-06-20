@@ -52,6 +52,35 @@ class TestHealthEndpoint:
         assert "llm" in data["checks"]
 
 
+class TestQueryStreamEndpoint:
+    """Tests for POST /query/stream — SSE streaming."""
+
+    def test_stream_requires_question(self, client) -> None:
+        response = client.post("/query/stream/")
+        assert response.status_code == 422
+
+    @heavy
+    def test_stream_returns_sse(self, client) -> None:
+        response = client.post(
+            "/query/stream/",
+            data={"question": "What is RAG?", "user_id": "test"},
+        )
+        assert response.status_code == 200
+        assert "text/event-stream" in response.headers["content-type"]
+        # Should contain SSE events
+        content = response.text
+        assert "event:" in content
+        assert "data:" in content
+
+    def test_stream_openapi_spec(self, client) -> None:
+        """Verify the stream endpoint is registered in OpenAPI."""
+        response = client.get("/openapi.json")
+        data = response.json()
+        paths = data.get("paths", {})
+        assert "/query/stream" in paths
+        assert "post" in paths["/query/stream"]
+
+
 class TestQueryEndpoint:
     """Tests for POST /query/ — validation and structure."""
 
