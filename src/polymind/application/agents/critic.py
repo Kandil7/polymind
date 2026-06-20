@@ -21,40 +21,49 @@ def run(state: PolyMindState) -> PolyMindState:
     Reads: user_query, final_answer, retrieved_chunks
     Writes: critic_scores, passed_critic, should_retry, retry_count
     """
+    from polymind.infrastructure.tracing import trace_span
+
     query = state.get("user_query", "")
     answer = state.get("final_answer", "")
     chunks = state.get("retrieved_chunks", [])
     retry_count = state.get("retry_count", 0)
 
-    contexts = [c.get("text", "") for c in chunks]
+    with trace_span("critic", {"retry_count": retry_count}) as span:
+        contexts = [c.get("text", "") for c in chunks]
 
-    try:
-        scores = _evaluate_with_llm(query, answer, contexts)
-    except Exception as e:
-        logger.error("critic.llm_failed", error=str(e))
-        scores = _evaluate_heuristic(query, answer, contexts)
+        try:
+            scores = _evaluate_with_llm(query, answer, contexts)
+        except Exception as e:
+            logger.error("critic.llm_failed", error=str(e))
+            scores = _evaluate_heuristic(query, answer, contexts)
 
-    # Determine pass/fail
-    faithfulness = scores.get("faithfulness", 0.0)
-    relevancy = scores.get("answer_relevancy", 0.0)
-    hallucination = scores.get("hallucination_rate", 1.0)
+        # Determine pass/fail
+        faithfulness = scores.get("faithfulness", 0.0)
+        relevancy = scores.get("answer_relevancy", 0.0)
+        hallucination = scores.get("hallucination_rate", 1.0)
 
-    passed = (
-        faithfulness >= FAITHFULNESS_THRESHOLD
-        and relevancy >= RELEVANCY_THRESHOLD
-        and hallucination <= HALLUCINATION_THRESHOLD
-    )
+        passed = (
+            faithfulness >= FAITHFULNESS_THRESHOLD
+            and relevancy >= RELEVANCY_THRESHOLD
+            and hallucination <= HALLUCINATION_THRESHOLD
+        )
 
-    should_retry = not passed and retry_count < MAX_RETRIES
+        should_retry = not passed and retry_count < MAX_RETRIES
 
-    logger.info(
-        "critic.done",
-        faithfulness=f"{faithfulness:.3f}",
-        relevancy=f"{relevancy:.3f}",
-        hallucination=f"{hallucination:.3f}",
-        passed=passed,
-        should_retry=should_retry,
-    )
+        if span:
+            span.set_attribute("critic.faithfulness", faithfulness)
+            span.set_attribute("critic.relevancy", relevancy)
+            span.set_attribute("critic.hallucination", hallucination)
+            span.set_attribute("critic.passed", passed)
+
+        logger.info(
+            "critic.done",
+            faithfulness=f"{faithfulness:.3f}",
+            relevancy=f"{relevancy:.3f}",
+            hallucination=f"{hallucination:.3f}",
+            passed=passed,
+            should_retry=should_retry,
+        )
 
     return {
         **state,

@@ -27,6 +27,14 @@ async def lifespan(app: FastAPI):
     # ── Startup ──────────────────────────────────────────
     logger.info("polymind.startup", version=__version__)
 
+    # Initialize tracing
+    try:
+        from polymind.infrastructure.tracing import _setup_tracer
+
+        _setup_tracer()
+    except Exception as e:
+        logger.warning("tracing.init_failed", error=str(e))
+
     # Pre-warm Qdrant connection
     try:
         from polymind.infrastructure.qdrant.client_factory import (
@@ -45,6 +53,16 @@ async def lifespan(app: FastAPI):
     yield
 
     # ── Shutdown ─────────────────────────────────────────
+    # Flush traces
+    try:
+        from opentelemetry import trace
+
+        provider = trace.get_tracer_provider()
+        if hasattr(provider, "shutdown"):
+            provider.shutdown()
+    except Exception:
+        pass
+
     logger.info("polymind.shutdown")
 
 

@@ -16,6 +16,8 @@ def run(state: PolyMindState) -> PolyMindState:
     Writes: final_answer (enhanced), citations (formatted)
     Side effects: Stores episode in memory, consolidates patterns.
     """
+    from polymind.infrastructure.tracing import trace_span
+
     answer = state.get("final_answer", "")
     citations = state.get("citations", [])
     scores = state.get("critic_scores", {})
@@ -24,24 +26,29 @@ def run(state: PolyMindState) -> PolyMindState:
     user_id = state.get("user_id", "default")
     modality = state.get("modality", "text")
 
-    # Calculate confidence from critic scores
-    faithfulness = scores.get("faithfulness", 0.5) if isinstance(scores, dict) else 0.5
-    if hasattr(faithfulness, "value"):
-        faithfulness = faithfulness.value
+    with trace_span("synthesizer") as span:
+        # Calculate confidence from critic scores
+        faithfulness = scores.get("faithfulness", 0.5) if isinstance(scores, dict) else 0.5
+        if hasattr(faithfulness, "value"):
+            faithfulness = faithfulness.value
 
-    confidence = _calculate_confidence(faithfulness, retry_count)
+        confidence = _calculate_confidence(faithfulness, retry_count)
 
-    # Format answer with citations
-    formatted_answer = _format_answer(answer, citations, confidence)
+        # Format answer with citations
+        formatted_answer = _format_answer(answer, citations, confidence)
 
-    # Store episode in memory
-    _store_episode(query, answer, faithfulness, modality, user_id)
+        # Store episode in memory
+        _store_episode(query, answer, faithfulness, modality, user_id)
 
-    logger.info(
-        "synthesizer.done",
-        confidence=f"{confidence:.2f}",
-        citations=len(citations),
-    )
+        if span:
+            span.set_attribute("synthesizer.confidence", confidence)
+            span.set_attribute("synthesizer.citations", len(citations))
+
+        logger.info(
+            "synthesizer.done",
+            confidence=f"{confidence:.2f}",
+            citations=len(citations),
+        )
 
     return {
         **state,

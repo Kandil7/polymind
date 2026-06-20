@@ -28,47 +28,53 @@ def run(state: PolyMindState) -> PolyMindState:
            docqa_result, tableqa_result
     Writes: retrieved_chunks, retrieval_scores
     """
+    from polymind.infrastructure.tracing import trace_span
+
     query = _build_effective_query(state)
     strategy = state.get("retrieval_strategy", "standard")
 
-    logger.info("rag.start", strategy=strategy, query_length=len(query))
+    with trace_span("rag", {"strategy": strategy, "query.length": len(query)}) as span:
+        logger.info("rag.start", strategy=strategy, query_length=len(query))
 
-    try:
-        if strategy == "skip":
-            # Skip retrieval — rely on LLM parametric knowledge
-            logger.info("rag.skip", reason="simple_factual_query")
+        try:
+            if strategy == "skip":
+                # Skip retrieval — rely on LLM parametric knowledge
+                logger.info("rag.skip", reason="simple_factual_query")
+                return {
+                    **state,
+                    "retrieved_chunks": [],
+                    "retrieval_scores": [],
+                }
+
+            chunks = _retrieve_by_strategy(query, state, strategy)
+
+            retrieved = [
+                {
+                    "text": c.text,
+                    "source": c.metadata.source,
+                    "score": c.score or 0.0,
+                }
+                for c in chunks
+            ]
+            scores = [c.score or 0.0 for c in chunks]
+
+            if span:
+                span.set_attribute("rag.chunks_found", len(retrieved))
+
+            logger.info("rag.done", chunks=len(retrieved), strategy=strategy)
+            return {
+                **state,
+                "retrieved_chunks": retrieved,
+                "retrieval_scores": scores,
+            }
+
+        except Exception as e:
+            logger.error("rag.failed", error=str(e), strategy=strategy)
             return {
                 **state,
                 "retrieved_chunks": [],
                 "retrieval_scores": [],
             }
-
-        chunks = _retrieve_by_strategy(query, state, strategy)
-
-        retrieved = [
-            {
-                "text": c.text,
-                "source": c.metadata.source,
-                "score": c.score or 0.0,
-            }
-            for c in chunks
-        ]
-        scores = [c.score or 0.0 for c in chunks]
-
-        logger.info("rag.done", chunks=len(retrieved), strategy=strategy)
-        return {
-            **state,
-            "retrieved_chunks": retrieved,
-            "retrieval_scores": scores,
-        }
-
-    except Exception as e:
-        logger.error("rag.failed", error=str(e), strategy=strategy)
-        return {
-            **state,
-            "retrieved_chunks": [],
-            "retrieval_scores": [],
-        }
 
 
 def _build_effective_query(state: PolyMindState) -> str:

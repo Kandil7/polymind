@@ -31,32 +31,39 @@ def run(state: PolyMindState) -> PolyMindState:
     Reads: user_query, audio_path, image_path, file_path, user_id
     Writes: modality, intent, retry_count, passed_critic, past_episodes, semantic_facts
     """
+    from polymind.infrastructure.tracing import trace_span
+
     query = state.get("user_query", "")
     user_id = state.get("user_id", "default")
 
-    # ── Detect modality from file extensions ──
-    modality = "text"
-    if state.get("audio_path"):
-        modality = "audio"
-    elif state.get("image_path"):
-        modality = "image"
-    elif fpath := state.get("file_path"):
-        ext = Path(fpath).suffix.lower()
-        modality = "table" if ext in (".csv", ".xlsx", ".xls") else "document"
+    with trace_span("planner", {"query.length": len(query)}) as span:
+        # ── Detect modality from file extensions ──
+        modality = "text"
+        if state.get("audio_path"):
+            modality = "audio"
+        elif state.get("image_path"):
+            modality = "image"
+        elif fpath := state.get("file_path"):
+            ext = Path(fpath).suffix.lower()
+            modality = "table" if ext in (".csv", ".xlsx", ".xls") else "document"
 
-    # ── Classify intent (LLM-first, keyword fallback) ──
-    intent = _classify_intent(query)
+        # ── Classify intent (LLM-first, keyword fallback) ──
+        intent = _classify_intent(query)
 
-    # ── Recall memory context ──
-    past_episodes, semantic_facts = _recall_memory(query, user_id)
+        # ── Recall memory context ──
+        past_episodes, semantic_facts = _recall_memory(query, user_id)
 
-    logger.info(
-        "planner.done",
-        modality=modality,
-        intent=intent,
-        episodes_recalled=len(past_episodes),
-        facts_recalled=len(semantic_facts),
-    )
+        if span:
+            span.set_attribute("planner.modality", modality)
+            span.set_attribute("planner.intent", intent)
+
+        logger.info(
+            "planner.done",
+            modality=modality,
+            intent=intent,
+            episodes_recalled=len(past_episodes),
+            facts_recalled=len(semantic_facts),
+        )
 
     return {
         **state,

@@ -23,14 +23,21 @@ def run(state: PolyMindState) -> PolyMindState:
     Reads: user_query, modality, past_episodes
     Writes: retrieval_strategy
     """
-    query = state.get("user_query", "")
-    strategy = _classify_retrieval(query)
+    from polymind.infrastructure.tracing import trace_span
 
-    logger.info(
-        "router.done",
-        modality=state.get("modality"),
-        strategy=strategy,
-    )
+    query = state.get("user_query", "")
+
+    with trace_span("router", {"modality": state.get("modality", "text")}) as span:
+        strategy = _classify_retrieval(query)
+
+        if span:
+            span.set_attribute("router.strategy", strategy)
+
+        logger.info(
+            "router.done",
+            modality=state.get("modality"),
+            strategy=strategy,
+        )
 
     return {**state, "retrieval_strategy": strategy}
 
