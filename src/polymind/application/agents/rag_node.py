@@ -127,7 +127,23 @@ def _build_effective_query(state: PolyMindState) -> str:
 def _retrieve_by_strategy(
     query: str, state: PolyMindState, strategy: str
 ) -> list:
-    """Route retrieval to the appropriate strategy implementation."""
+    """Route retrieval to the appropriate strategy implementation.
+
+    Uses HyDE expansion for complex queries to improve retrieval quality.
+    """
+    # Determine if HyDE should be used
+    use_hyde = _should_use_hyde(query)
+
+    if use_hyde:
+        # Expand query with HyDE before retrieval
+        from polymind.infrastructure.hyde import expand_query_hyde
+
+        expanded = expand_query_hyde(query)
+        if expanded != query:
+            logger.info("hyde.applied", original=query[:50], expanded=expanded[:50])
+            # Use expanded query for retrieval
+            query = expanded
+
     if strategy == "hipporag":
         chunks = _retrieve_hipporag(query, state)
     elif strategy == "speculative":
@@ -140,6 +156,31 @@ def _retrieve_by_strategy(
         chunks = _rerank(query, chunks)
 
     return chunks
+
+
+def _should_use_hyde(query: str) -> bool:
+    """Determine if HyDE should be used for this query.
+
+    HyDE is most effective for:
+    - Complex queries (many words)
+    - Abstract concepts
+    - Comparison/reasoning queries
+    """
+    # Simple heuristic: use HyDE for longer, more complex queries
+    words = query.split()
+    if len(words) > 10:
+        return True
+
+    # Use HyDE for comparison/reasoning signals
+    hyde_signals = (
+        "compare", "difference", "how does", "why", "explain",
+        "relationship", "connection", "analyze", "evaluate",
+    )
+    q = query.lower()
+    if any(signal in q for signal in hyde_signals):
+        return True
+
+    return False
 
 
 def _retrieve_standard(query: str, state: PolyMindState) -> list:
