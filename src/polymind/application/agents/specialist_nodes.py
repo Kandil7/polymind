@@ -53,10 +53,57 @@ def vqa_node(state: PolyMindState) -> PolyMindState:
     """Process image input using VQA specialist.
 
     Reads: image_path, user_query
-    Writes: vqa_result
+    Writes: vqa_result, multimodal_context
     """
     image_path = state.get("image_path", "")
     question = state.get("user_query", "What is in this image?")
+
+    try:
+        from polymind.infrastructure.specialists.vqa_wrapper import VQAWrapper
+
+        vqa = VQAWrapper()
+        result = run_async(vqa.process(image_path, question=question))
+
+        # Find similar images using CLIP
+        multimodal_context = _find_similar_images(image_path, question)
+
+        if multimodal_context:
+            result["similar_images"] = multimodal_context
+
+        logger.info("vqa.done", answer=result.get("answer"))
+        return {**state, "vqa_result": result}
+
+    except Exception as e:
+        logger.error("vqa.failed", error=str(e))
+        return {**state, "vqa_result": {"answer": f"VQA failed: {e}"}}
+
+
+def _find_similar_images(image_path: str, query: str) -> list[dict]:
+    """Find similar images using CLIP multi-modal retrieval."""
+    try:
+        from polymind.infrastructure.rag.multimodal_retriever import (
+            MultiModalRetriever,
+        )
+
+        retriever = MultiModalRetriever()
+
+        if not retriever.is_available:
+            return []
+
+        # Search for similar images using the text query
+        similar = retriever.search_images(query, top_k=3)
+
+        logger.info(
+            "vqa.similar_images",
+            count=len(similar),
+            query=query[:50],
+        )
+
+        return similar
+
+    except Exception as e:
+        logger.debug("vqa.similar_images.failed", error=str(e))
+        return []
 
     try:
         from polymind.infrastructure.specialists.vqa_wrapper import VQAWrapper

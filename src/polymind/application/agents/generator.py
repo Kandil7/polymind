@@ -37,6 +37,11 @@ def run(state: PolyMindState) -> PolyMindState:
         if vqa := state.get("vqa_result"):
             if answer := vqa.get("answer"):
                 context += f"\n\n[Image Analysis]\n{answer}"
+            # Add similar images from CLIP
+            if similar := vqa.get("similar_images"):
+                context += "\n\n[Similar Images Found]"
+                for img in similar[:2]:
+                    context += f"\n- {img.get('caption', 'Image')} (similarity: {img.get('score', 0):.2f})"
 
         if docqa := state.get("docqa_result"):
             if answer := docqa.get("answer"):
