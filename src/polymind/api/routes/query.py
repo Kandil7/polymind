@@ -28,10 +28,14 @@ async def query_endpoint(
     """
     start_time = time.time()
 
-    # Save uploaded files to temp
+    # Save uploaded files to system temp directory
     import shutil
+    import tempfile
     import uuid
     from pathlib import Path
+
+    tmp_dir = Path(tempfile.gettempdir()) / "polymind"
+    tmp_dir.mkdir(exist_ok=True)
 
     audio_path = image_path = file_path = None
 
@@ -41,7 +45,7 @@ async def query_endpoint(
         (doc_file, "doc"),
     ]:
         if upload and upload.filename:
-            tmp = Path(f"/tmp/{uuid.uuid4()}_{upload.filename}")
+            tmp = tmp_dir / f"{uuid.uuid4()}_{upload.filename}"
             with tmp.open("wb") as f:
                 shutil.copyfileobj(upload.file, f)
             if attr_name == "audio":

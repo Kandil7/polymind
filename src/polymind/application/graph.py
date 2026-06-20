@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import structlog
 from langgraph.graph import END, StateGraph
+from langgraph.graph.state import CompiledGraph
 
 from polymind.application.agents import (
     critic,
@@ -27,11 +28,11 @@ from polymind.application.state import PolyMindState
 logger = structlog.get_logger()
 
 
-def build_graph() -> StateGraph:
+def build_graph() -> CompiledGraph:
     """Build and compile the PolyMind agent graph.
 
     Returns:
-        Compiled StateGraph ready for invocation.
+        CompiledGraph ready for invocation via invoke() or ainvoke().
     """
     graph = StateGraph(PolyMindState)
 
@@ -52,6 +53,7 @@ def build_graph() -> StateGraph:
     graph.add_edge("planner", "router")
 
     # Router → Specialist (conditional)
+    # "multi" modality routes to RAG (text-based retrieval with specialist context)
     graph.add_conditional_edges(
         "router",
         router.decide,
@@ -61,6 +63,7 @@ def build_graph() -> StateGraph:
             "docqa": "docqa",
             "tableqa": "tableqa",
             "rag": "rag",
+            "multi": "rag",
         },
     )
 

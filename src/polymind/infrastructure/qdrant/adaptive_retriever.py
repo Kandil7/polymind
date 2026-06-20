@@ -19,7 +19,6 @@ class RetrievalStrategy(str, Enum):
     STANDARD = "standard"
     HIPPORAG = "hipporag"
     SPECULATIVE = "speculative"
-    SPARC = "sparc"
 
 
 class AdaptiveRetriever(IRetriever):

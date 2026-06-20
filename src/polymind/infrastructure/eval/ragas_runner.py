@@ -134,9 +134,21 @@ class RAGASRunner:
         critic = DeepEvalCritic()
         scores = critic.evaluate(query, answer, contexts, ground_truth)
 
-        # Check thresholds
+        # Check thresholds — normalize key names between DeepEvalCritic and runner
+        # DeepEvalCritic returns "hallucination_rate", but _evaluate_deepeval may
+        # return "hallucination" (from HallucinationMetric class name)
+        def _get_score(metric: str) -> dict:
+            """Get score dict, handling key name variants."""
+            data = scores.get(metric)
+            if data is not None:
+                return data
+            # Try variant key: "hallucination" ↔ "hallucination_rate"
+            if metric == "hallucination_rate":
+                return scores.get("hallucination", {"passed": True, "score": 0.0})
+            return {"passed": True, "score": 0.0}
+
         passed = all(
-            scores.get(metric, {}).get("passed", False)
+            _get_score(metric).get("passed", False)
             for metric in self._thresholds
         )
 

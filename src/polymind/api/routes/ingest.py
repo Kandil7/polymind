@@ -26,6 +26,7 @@ async def ingest_endpoint(
     start_time = time.time()
 
     import shutil
+    import tempfile
     import uuid
     from pathlib import Path
 
@@ -37,7 +38,9 @@ async def ingest_endpoint(
             processing_time_ms=0,
         )
 
-    tmp = Path(f"/tmp/{uuid.uuid4()}_{file.filename}")
+    tmp_dir = Path(tempfile.gettempdir()) / "polymind"
+    tmp_dir.mkdir(exist_ok=True)
+    tmp = tmp_dir / f"{uuid.uuid4()}_{file.filename}"
     with tmp.open("wb") as f:
         shutil.copyfileobj(file.file, f)
 

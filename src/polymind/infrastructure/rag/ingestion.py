@@ -100,7 +100,10 @@ class IngestionPipeline:
             return "\n\n".join(text_parts)
         except ImportError:
             logger.warning("ingestion.pdf.no_pymupdf")
-            return path.read_text(encoding="utf-8", errors="ignore")
+            raise ImportError(
+                "pymupdf is required for PDF text extraction. "
+                "Install with: pip install pymupdf"
+            ) from None
 
     @staticmethod
     def _extract_csv(path: Path) -> str:

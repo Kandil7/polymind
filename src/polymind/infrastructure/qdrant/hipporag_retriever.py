@@ -199,7 +199,11 @@ class HippoRAGRetriever(IRetriever):
         return triples
 
     def _add_synonymy_edges(self) -> None:
-        """Add bidirectional synonymy edges between similar entities."""
+        """Add bidirectional synonymy edges between similar entities.
+
+        Also populates the node embeddings cache for all nodes
+        (used by _match_query_to_nodes for semantic matching).
+        """
         nodes = list(self._graph.nodes())
         if len(nodes) < 2:
             return
@@ -211,6 +215,11 @@ class HippoRAGRetriever(IRetriever):
         node_embs_np = np.array(node_embs)
         sims = cosine_similarity(node_embs_np)
 
+        # Cache ALL node embeddings for semantic matching
+        for i, node in enumerate(nodes):
+            self._node_embeddings[node] = node_embs_np[i].tolist()
+
+        # Add synonymy edges where similarity exceeds threshold
         for i in range(len(nodes)):
             for j in range(i + 1, len(nodes)):
                 if sims[i][j] >= self._synonym_threshold and nodes[i] != nodes[j]:
@@ -222,9 +231,6 @@ class HippoRAGRetriever(IRetriever):
                         nodes[j], nodes[i],
                         relation="synonymy", weight=float(sims[i][j]),
                     )
-                    # Update embeddings cache
-                    self._node_embeddings[nodes[i]] = node_embs_np[i].tolist()
-                    self._node_embeddings[nodes[j]] = node_embs_np[j].tolist()
 
     def _extract_query_entities(self, query: str) -> list[str]:
         """Extract key entities from a query."""

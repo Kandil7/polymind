@@ -2,35 +2,12 @@
 
 from __future__ import annotations
 
-import asyncio
-
 import structlog
 
 from polymind.application.state import PolyMindState
+from polymind.infrastructure.async_utils import run_async
 
 logger = structlog.get_logger()
-
-
-def _run_async(coro):
-    """Run an async coroutine from a sync context safely.
-
-    Handles both cases: when no event loop is running (create new)
-    and when an event loop is already running (use nest_asyncio pattern).
-    """
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
-
-    if loop is not None:
-        # We're inside an async context — use nest_asyncio or thread pool
-        import concurrent.futures
-
-        with concurrent.futures.ThreadPoolExecutor() as pool:
-            future = pool.submit(asyncio.run, coro)
-            return future.result(timeout=120)
-    else:
-        return asyncio.run(coro)
 
 
 def asr_node(state: PolyMindState) -> PolyMindState:
@@ -45,7 +22,7 @@ def asr_node(state: PolyMindState) -> PolyMindState:
         from polymind.infrastructure.specialists.asr_wrapper import ASRWrapper
 
         asr = ASRWrapper()
-        result = _run_async(asr.process(audio_path))
+        result = run_async(asr.process(audio_path))
         transcript = result.get("text", "")
 
         logger.info("asr.done", transcript_length=len(transcript))
@@ -69,7 +46,7 @@ def vqa_node(state: PolyMindState) -> PolyMindState:
         from polymind.infrastructure.specialists.vqa_wrapper import VQAWrapper
 
         vqa = VQAWrapper()
-        result = _run_async(vqa.process(image_path, question=question))
+        result = run_async(vqa.process(image_path, question=question))
 
         logger.info("vqa.done", answer=result.get("answer"))
         return {**state, "vqa_result": result}
@@ -94,7 +71,7 @@ def docqa_node(state: PolyMindState) -> PolyMindState:
         )
 
         docqa = DocQAWrapper()
-        result = _run_async(docqa.process(file_path, question=question))
+        result = run_async(docqa.process(file_path, question=question))
 
         logger.info("docqa.done", answer=result.get("answer"))
         return {**state, "docqa_result": result}
@@ -119,7 +96,7 @@ def tableqa_node(state: PolyMindState) -> PolyMindState:
         )
 
         tableqa = TableQAWrapper()
-        result = _run_async(tableqa.process(file_path, question=question))
+        result = run_async(tableqa.process(file_path, question=question))
 
         logger.info("tableqa.done", answer=result.get("answer"))
         return {**state, "tableqa_result": result}

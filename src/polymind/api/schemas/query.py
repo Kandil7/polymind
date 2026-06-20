@@ -1,4 +1,8 @@
-"""Request/Response schemas for /query endpoint."""
+"""Request/Response schemas for /query endpoint.
+
+QueryRequest is used for programmatic API clients (non-multipart).
+QueryResponse is used by the /query route for all responses.
+"""
 
 from __future__ import annotations
 
@@ -6,7 +10,11 @@ from pydantic import BaseModel, Field
 
 
 class QueryRequest(BaseModel):
-    """Multimodal query request."""
+    """Multimodal query request (JSON body for programmatic clients).
+
+    Note: The /query route uses Form/File parameters for multipart uploads.
+    This schema is provided for API documentation and non-file queries.
+    """
 
     question: str = Field(..., description="User's question or instruction")
     user_id: str = Field(default="anonymous", description="User identifier")

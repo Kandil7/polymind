@@ -7,13 +7,16 @@ semantic recall of past conversations.
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any
 
 import structlog
+
+from polymind.domain.interfaces.memory_store import IMemoryStore
 
 logger = structlog.get_logger()
 
 
-class EpisodicStore:
+class EpisodicStore(IMemoryStore):
     """Mem0-backed episodic memory for conversation history.
 
     Stores episodes with metadata (timestamp, faithfulness, modality).
@@ -107,3 +110,11 @@ class EpisodicStore:
     def is_available(self) -> bool:
         """Check if episodic store is loaded and available."""
         return self._memory is not None
+
+    async def consolidate(self) -> None:
+        """Consolidate episodic patterns into semantic facts.
+
+        Episodic store doesn't consolidate — this is a no-op.
+        Consolidation is handled by FourLayerMemory.
+        """
+        pass

@@ -6,18 +6,21 @@ Used for long-term knowledge accumulation.
 
 from __future__ import annotations
 
+import hashlib
 from datetime import UTC, datetime
 
 import structlog
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
 
+from polymind.domain.interfaces.memory_store import IMemoryStore
+
 logger = structlog.get_logger()
 
 COLLECTION_NAME = "semantic_memory"
 
 
-class SemanticStore:
+class SemanticStore(IMemoryStore):
     """Qdrant-backed semantic memory for extracted facts."""
 
     def __init__(
@@ -59,7 +62,7 @@ class SemanticStore:
             source_query: Original query that led to this fact.
         """
         embedding = self._embedder.embed_single(fact)
-        point_id = abs(hash(fact)) % (2**31)
+        point_id = int(hashlib.md5(fact.encode()).hexdigest()[:8], 16)
 
         self._client.upsert(
             collection_name=self._collection,
@@ -108,3 +111,11 @@ class SemanticStore:
             return info.points_count or 0
         except Exception:
             return 0
+
+    async def consolidate(self) -> None:
+        """Consolidate semantic facts.
+
+        Semantic store doesn't consolidate — this is a no-op.
+        Consolidation is handled by FourLayerMemory.
+        """
+        pass

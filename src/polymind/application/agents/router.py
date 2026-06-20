@@ -40,6 +40,7 @@ def decide(state: PolyMindState) -> str:
         "document": "docqa",
         "table": "tableqa",
         "text": "rag",
+        "multi": "rag",  # Multi-modal: combine specialist outputs via RAG
     }
 
     next_node = route_map.get(modality, "rag")

@@ -9,29 +9,12 @@ Supports multiple retrieval strategies:
 
 from __future__ import annotations
 
-import asyncio
-import concurrent.futures
-
 import structlog
 
 from polymind.application.state import PolyMindState
+from polymind.infrastructure.async_utils import run_async
 
 logger = structlog.get_logger()
-
-
-def _run_async(coro):
-    """Run an async coroutine from a sync context safely."""
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
-
-    if loop is not None:
-        with concurrent.futures.ThreadPoolExecutor() as pool:
-            future = pool.submit(asyncio.run, coro)
-            return future.result(timeout=120)
-    else:
-        return asyncio.run(coro)
 
 
 def run(state: PolyMindState) -> PolyMindState:
@@ -130,7 +113,7 @@ def _retrieve_standard(query: str, state: PolyMindState) -> list:
     embedder = Embedder()
     repo = QdrantChunkRepository(client, embedder)
 
-    return _run_async(repo.retrieve(query, top_k=5))
+    return run_async(repo.retrieve(query, top_k=5))
 
 
 def _retrieve_hipporag(query: str, state: PolyMindState) -> list:
@@ -150,7 +133,7 @@ def _retrieve_hipporag(query: str, state: PolyMindState) -> list:
             logger.info("hipporag.empty_fallback")
             return _retrieve_standard(query, state)
 
-        return _run_async(retriever.retrieve(query, top_k=5))
+        return run_async(retriever.retrieve(query, top_k=5))
 
     except Exception as e:
         logger.warning("hipporag.failed_fallback", error=str(e))
@@ -170,4 +153,4 @@ def _retrieve_speculative(query: str, state: PolyMindState) -> list:
     repo = QdrantChunkRepository(client, embedder)
 
     # Retrieve more chunks for speculative verification
-    return _run_async(repo.retrieve(query, top_k=8))
+    return run_async(repo.retrieve(query, top_k=8))

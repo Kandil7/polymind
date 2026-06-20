@@ -9,15 +9,18 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import structlog
+
+from polymind.domain.interfaces.memory_store import IMemoryStore
 
 logger = structlog.get_logger()
 
 DEFAULT_STORE_PATH = "data/procedural_memory.json"
 
 
-class ProceduralStore:
+class ProceduralStore(IMemoryStore):
     """JSON-backed procedural memory for successful patterns."""
 
     def __init__(self, store_path: str = DEFAULT_STORE_PATH) -> None:
@@ -101,3 +104,11 @@ class ProceduralStore:
     def list_task_types(self) -> list[str]:
         """Return all stored task types."""
         return list(self._store.keys())
+
+    def consolidate(self) -> None:
+        """Consolidate procedural patterns.
+
+        Procedural store doesn't consolidate — this is a no-op.
+        Procedures are already consolidated by usage frequency.
+        """
+        pass

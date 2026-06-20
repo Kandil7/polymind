@@ -7,19 +7,24 @@ from typing import Any
 
 
 class IMemoryStore(ABC):
-    """Contract for agent memory stores (episodic, semantic, procedural)."""
+    """Contract for agent memory stores (episodic, semantic, procedural).
+
+    Subclasses implement domain-specific store/recall methods.
+    The generic methods below provide a common interface for
+    orchestration code that doesn't know the concrete store type.
+    """
 
     @abstractmethod
-    async def store(self, key: str, value: Any, **kwargs: object) -> None:
+    def store(self, key: str, value: Any, **kwargs: object) -> None:
         """Store a memory entry."""
         ...
 
     @abstractmethod
-    async def recall(self, query: str, top_k: int = 5) -> list[Any]:
+    def recall(self, query: str, top_k: int = 5) -> list[Any]:
         """Recall relevant memories for a query."""
         ...
 
     @abstractmethod
-    async def consolidate(self) -> None:
+    def consolidate(self) -> None:
         """Consolidate episodic memories into semantic facts."""
         ...

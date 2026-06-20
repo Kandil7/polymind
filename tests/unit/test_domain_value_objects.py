@@ -24,7 +24,9 @@ class TestRetrievalStrategy:
         assert RetrievalStrategy.STANDARD == "standard"
         assert RetrievalStrategy.HIPPORAG == "hipporag"
         assert RetrievalStrategy.SPECULATIVE == "speculative"
-        assert RetrievalStrategy.SPARC == "sparc"
+
+    def test_count(self) -> None:
+        assert len(RetrievalStrategy) == 4
 
 
 class TestScore:
