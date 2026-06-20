@@ -6,10 +6,13 @@ from contextlib import asynccontextmanager
 
 import structlog
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from polymind import __version__
+from polymind.api.middleware.auth import APIKeyAuthMiddleware
 from polymind.api.middleware.logging import RequestLoggingMiddleware
 from polymind.api.middleware.metrics import PrometheusMiddleware, metrics_endpoint
+from polymind.api.middleware.rate_limit import RateLimitMiddleware
 from polymind.api.routes.eval import router as eval_router
 from polymind.api.routes.health import router as health_router
 from polymind.api.routes.ingest import router as ingest_router
@@ -60,7 +63,22 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # ── Middleware ────────────────────────────────────────
+    # ── CORS ─────────────────────────────────────────────
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # Configure for production
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # ── Security ─────────────────────────────────────────
+    app.add_middleware(APIKeyAuthMiddleware)
+
+    # ── Rate Limiting ────────────────────────────────────
+    app.add_middleware(RateLimitMiddleware)
+
+    # ── Observability ────────────────────────────────────
     app.add_middleware(PrometheusMiddleware)
     app.add_middleware(RequestLoggingMiddleware)
 

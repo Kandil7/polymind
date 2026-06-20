@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "polymind"
-version = "0.1.0"
+version = "1.0.0"
 description = "Self-evaluating, multimodal, multi-agent knowledge assistant"
 authors = ["PolyMind Team"]
 readme = "README.md"
@@ -36,6 +36,8 @@ scikit-learn = "^1.5.0"
 Pillow = "^10.4.0"
 aiofiles = "^24.1.0"
 groq = "^1.4.0"
+streamlit = "^1.37.0"
+modal = "^0.63.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.0"
