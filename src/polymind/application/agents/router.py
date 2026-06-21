@@ -39,7 +39,7 @@ def run(state: PolyMindState) -> PolyMindState:
             strategy=strategy,
         )
 
-    return {**state, "retrieval_strategy": strategy}
+    return {**state, "current_node": "router", "retrieval_strategy": strategy}
 
 
 def decide(state: PolyMindState) -> str:

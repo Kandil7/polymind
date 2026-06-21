@@ -46,6 +46,7 @@ def run(state: PolyMindState) -> PolyMindState:
                     span.set_attribute("rag.degraded", True)
                 return {
                     **state,
+                    "current_node": "rag",
                     "retrieved_chunks": [],
                     "retrieval_scores": [],
                 }
@@ -55,6 +56,7 @@ def run(state: PolyMindState) -> PolyMindState:
                 logger.info("rag.skip", reason="simple_factual_query")
                 return {
                     **state,
+                    "current_node": "rag",
                     "retrieved_chunks": [],
                     "retrieval_scores": [],
                 }
@@ -81,6 +83,7 @@ def run(state: PolyMindState) -> PolyMindState:
             logger.info("rag.done", chunks=len(retrieved), strategy=strategy)
             return {
                 **state,
+                "current_node": "rag",
                 "retrieved_chunks": retrieved,
                 "retrieval_scores": scores,
             }
@@ -97,6 +100,7 @@ def run(state: PolyMindState) -> PolyMindState:
             logger.error("rag.failed", error=str(e), strategy=strategy)
             return {
                 **state,
+                "current_node": "rag",
                 "retrieved_chunks": [],
                 "retrieval_scores": [],
             }

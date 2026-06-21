@@ -199,7 +199,12 @@ async def _stream_graph(
     image_path: str | None,
     file_path: str | None,
 ) -> AsyncIterator[str]:
-    """Generator that streams SSE events from the LangGraph agent graph."""
+    """Generator that streams SSE events from the LangGraph agent graph.
+
+    Uses stream_mode="values" to get the full accumulated state after each
+    node, so we can extract the final state from the last event without
+    re-invoking the graph.
+    """
     start_time = time.time()
 
     initial_state = {
@@ -215,13 +220,21 @@ async def _stream_graph(
 
         graph = build_graph()
 
-        # Stream with "updates" mode — yields state deltas after each node
-        async for event in graph.astream(initial_state, stream_mode="updates"):
-            # event is a dict: {node_name: state_delta}
-            for node_name, state_delta in event.items():
-                elapsed_ms = round((time.time() - start_time) * 1000, 1)
-                label = NODE_LABELS.get(node_name, node_name)
+        final_state: dict = {}
 
+        # Stream with "values" mode — yields the full accumulated state after
+        # each node executes, so the last value is the complete final state.
+        async for event in graph.astream(initial_state, stream_mode="values"):
+            # event is the full state dict after the latest node
+            final_state = event
+
+            # Determine which node just completed by diffing keys or using metadata
+            # The state contains a "current_node" key set by graph nodes
+            node_name = event.get("current_node", "")
+            elapsed_ms = round((time.time() - start_time) * 1000, 1)
+            label = NODE_LABELS.get(node_name, node_name)
+
+            if node_name:
                 # Emit node_start
                 yield _sse_event("node_start", {
                     "node": node_name,
@@ -230,7 +243,7 @@ async def _stream_graph(
                 })
 
                 # Emit node_done with relevant state changes
-                progress_data = _extract_progress(node_name, state_delta)
+                progress_data = _extract_progress(node_name, event)
                 progress_data.update({
                     "node": node_name,
                     "label": label,
@@ -238,13 +251,9 @@ async def _stream_graph(
                 })
                 yield _sse_event("node_done", progress_data)
 
-        # Build final response from the completed graph state
-        # Re-invoke to get the final state (stream doesn't return it directly)
-        final_state = await graph.ainvoke(initial_state)
-
         elapsed_ms = round((time.time() - start_time) * 1000, 1)
 
-        # Emit complete event
+        # Emit complete event using the final accumulated state
         yield _sse_event("complete", {
             "answer": final_state.get("final_answer", ""),
             "modality": final_state.get("modality", "text"),

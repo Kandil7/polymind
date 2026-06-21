@@ -94,6 +94,7 @@ def run(state: PolyMindState) -> PolyMindState:
 
     return {
         **state,
+        "current_node": "generator",
         "draft_answers": [answer],
         "final_answer": answer,
         "citations": citations,

@@ -138,5 +138,145 @@
     "query": "What are the key performance metrics for PolyMind?",
     "ground_truth": "Key metrics: Faithfulness >= 0.72, Answer Relevancy >= 0.75, Hallucination Rate <= 0.25, P95 latency < 800ms for text queries, 50+ concurrent users, and 87% answer relevancy on internal benchmark.",
     "source_doc": "performance_metrics.txt"
+  },
+  {
+    "id": "aud-001",
+    "modality": "audio",
+    "query": "Transcribe this meeting recording",
+    "ground_truth": "The ASR system processes the audio file using Whisper (local or Groq-hosted), produces a timestamped transcript, and returns the text transcription with detected language.",
+    "source_doc": "meeting_recording.mp3"
+  },
+  {
+    "id": "aud-002",
+    "modality": "audio",
+    "query": "What were the key action items discussed in this podcast?",
+    "ground_truth": "The system first transcribes the audio using ASR, then uses the transcript as context for the Generator to extract and summarize action items from the discussion.",
+    "source_doc": "podcast_episode.wav"
+  },
+  {
+    "id": "aud-003",
+    "modality": "audio",
+    "query": "Summarize the main points from this lecture",
+    "ground_truth": "The ASR node transcribes the lecture audio, and the Generator synthesizes a concise summary of the main topics and key points covered in the lecture.",
+    "source_doc": "lecture_recording.mp3"
+  },
+  {
+    "id": "aud-004",
+    "modality": "audio",
+    "query": "Who are the speakers in this interview?",
+    "ground_truth": "The ASR system transcribes the audio and the Generator analyzes the transcript to identify distinct speakers based on context clues, turn-taking patterns, and self-introductions.",
+    "source_doc": "interview.wav"
+  },
+  {
+    "id": "aud-005",
+    "modality": "audio",
+    "query": "Translate this Spanish audio to English",
+    "ground_truth": "The ASR system detects Spanish language, transcribes the audio, and the Generator translates the Spanish transcript to English while preserving meaning and context.",
+    "source_doc": "spanish_speech.mp3"
+  },
+  {
+    "id": "img-001",
+    "modality": "image",
+    "query": "What is shown in this image?",
+    "ground_truth": "The VQA system uses BLIP to analyze the image and provides a descriptive answer about the image contents, supplemented by CLIP-based similar image retrieval.",
+    "source_doc": "sample_photo.jpg"
+  },
+  {
+    "id": "img-002",
+    "modality": "image",
+    "query": "Extract text from this screenshot",
+    "ground_truth": "The VQA specialist processes the screenshot image using BLIP for visual question answering, identifying and extracting any visible text content from the image.",
+    "source_doc": "screenshot.png"
+  },
+  {
+    "id": "img-003",
+    "modality": "image",
+    "query": "Describe the chart in this image",
+    "ground_truth": "The VQA system analyzes the chart image using BLIP, identifying chart type, axis labels, data trends, and key values to provide a comprehensive description.",
+    "source_doc": "chart.png"
+  },
+  {
+    "id": "img-004",
+    "modality": "image",
+    "query": "What objects are in this photo?",
+    "ground_truth": "The VQA specialist uses BLIP to detect and list objects visible in the photograph, providing counts and spatial relationships where applicable.",
+    "source_doc": "objects_photo.jpg"
+  },
+  {
+    "id": "img-005",
+    "modality": "image",
+    "query": "What is the color scheme of this design?",
+    "ground_truth": "The VQA system analyzes the design image using BLIP to identify the dominant colors, color palette, and overall color scheme used in the design.",
+    "source_doc": "design_mockup.png"
+  },
+  {
+    "id": "doc-001",
+    "modality": "document",
+    "query": "Summarize this PDF document",
+    "ground_truth": "The DocQA specialist uses LayoutLM to understand the document layout, extracts text from each section, and the Generator produces a structured summary of the key content.",
+    "source_doc": "research_paper.pdf"
+  },
+  {
+    "id": "doc-002",
+    "modality": "document",
+    "query": "What are the key findings in this report?",
+    "ground_truth": "The DocQA system processes the document using LayoutLM for layout-aware extraction, identifies key findings sections, and synthesizes the main conclusions.",
+    "source_doc": "annual_report.pdf"
+  },
+  {
+    "id": "doc-003",
+    "modality": "document",
+    "query": "Extract the methodology section from this paper",
+    "ground_truth": "The DocQA specialist uses LayoutLM to understand document structure, locates the methodology section based on heading hierarchy, and extracts the relevant content.",
+    "source_doc": "methodology_paper.pdf"
+  },
+  {
+    "id": "doc-004",
+    "modality": "document",
+    "query": "What are the conclusions of this whitepaper?",
+    "ground_truth": "The DocQA system processes the whitepaper using LayoutLM, navigates to the conclusions section, and extracts the main takeaways and recommendations.",
+    "source_doc": "tech_whitepaper.pdf"
+  },
+  {
+    "id": "doc-005",
+    "modality": "document",
+    "query": "List all the references cited in this document",
+    "ground_truth": "The DocQA specialist analyzes the document structure using LayoutLM, identifies the references/bibliography section, and extracts all cited works in a structured list.",
+    "source_doc": "academic_paper.pdf"
+  },
+  {
+    "id": "tbl-001",
+    "modality": "table",
+    "query": "What is the average sales by region in this table?",
+    "ground_truth": "The TableQA specialist uses TAPAS to parse the CSV/table data, perform aggregation by region, and calculate the average sales figures for each geographic region.",
+    "source_doc": "sales_data.csv"
+  },
+  {
+    "id": "tbl-002",
+    "modality": "table",
+    "query": "Which product has the highest revenue?",
+    "ground_truth": "The TableQA system processes the table data using TAPAS, identifies the revenue column, and finds the product row with the maximum revenue value.",
+    "source_doc": "product_financials.csv"
+  },
+  {
+    "id": "tbl-003",
+    "modality": "table",
+    "query": "Show me the employee count by department",
+    "ground_truth": "The TableQA specialist uses TAPAS to group the table data by department column and count the number of employees in each department.",
+    "source_doc": "employee_roster.csv"
+  },
+  {
+    "id": "tbl-004",
+    "modality": "table",
+    "query": "What is the trend in monthly active users over time?",
+    "ground_truth": "The TableQA system uses TAPAS to parse the time-series data, identify the monthly active users column, and describe the trend pattern (growth, decline, or stable).",
+    "source_doc": "user_metrics.csv"
+  },
+  {
+    "id": "tbl-005",
+    "modality": "table",
+    "query": "Compare Q1 and Q2 performance metrics",
+    "ground_truth": "The TableQA specialist uses TAPAS to filter rows by quarter, extract performance metrics for Q1 and Q2, and provide a comparison summary of key differences.",
+    "source_doc": "quarterly_kpis.csv"
   }
 ]

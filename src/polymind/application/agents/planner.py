@@ -67,6 +67,7 @@ def run(state: PolyMindState) -> PolyMindState:
 
     return {
         **state,
+        "current_node": "planner",
         "modality": modality,
         "intent": intent,
         "retry_count": 0,

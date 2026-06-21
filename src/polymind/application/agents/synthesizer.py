@@ -55,6 +55,7 @@ def run(state: PolyMindState) -> PolyMindState:
 
     return {
         **state,
+        "current_node": "synthesizer",
         "final_answer": formatted_answer,
         "citations": citations,
     }

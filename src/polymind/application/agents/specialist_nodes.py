@@ -28,7 +28,7 @@ def asr_node(state: PolyMindState) -> PolyMindState:
         transcript = result.get("text", "")
 
         logger.info("asr.done", provider="local_whisper", transcript_length=len(transcript))
-        return {**state, "asr_transcript": transcript}
+        return {**state, "current_node": "asr", "asr_transcript": transcript}
 
     except Exception as local_err:
         logger.debug("asr.local_failed", error=str(local_err))
@@ -42,11 +42,11 @@ def asr_node(state: PolyMindState) -> PolyMindState:
         transcript = result.get("text", "")
 
         logger.info("asr.done", provider="groq_whisper", transcript_length=len(transcript))
-        return {**state, "asr_transcript": transcript}
+        return {**state, "current_node": "asr", "asr_transcript": transcript}
 
     except Exception as groq_err:
         logger.error("asr.all_providers_failed", local_error=str(local_err), groq_error=str(groq_err))
-        return {**state, "asr_transcript": f"ASR failed: {groq_err}"}
+        return {**state, "current_node": "asr", "asr_transcript": f"ASR failed: {groq_err}"}
 
 
 def vqa_node(state: PolyMindState) -> PolyMindState:
@@ -71,11 +71,11 @@ def vqa_node(state: PolyMindState) -> PolyMindState:
             result["similar_images"] = multimodal_context
 
         logger.info("vqa.done", answer=result.get("answer"))
-        return {**state, "vqa_result": result}
+        return {**state, "current_node": "vqa", "vqa_result": result}
 
     except Exception as e:
         logger.error("vqa.failed", error=str(e))
-        return {**state, "vqa_result": {"answer": f"VQA failed: {e}"}}
+        return {**state, "current_node": "vqa", "vqa_result": {"answer": f"VQA failed: {e}"}}
 
 
 def _find_similar_images(image_path: str, query: str) -> list[dict]:
@@ -105,19 +105,6 @@ def _find_similar_images(image_path: str, query: str) -> list[dict]:
         logger.debug("vqa.similar_images.failed", error=str(e))
         return []
 
-    try:
-        from polymind.infrastructure.specialists.vqa_wrapper import VQAWrapper
-
-        vqa = VQAWrapper()
-        result = run_async(vqa.process(image_path, question=question))
-
-        logger.info("vqa.done", answer=result.get("answer"))
-        return {**state, "vqa_result": result}
-
-    except Exception as e:
-        logger.error("vqa.failed", error=str(e))
-        return {**state, "vqa_result": {"answer": f"VQA failed: {e}"}}
-
 
 def docqa_node(state: PolyMindState) -> PolyMindState:
     """Process document input using DocQA specialist.
@@ -137,11 +124,11 @@ def docqa_node(state: PolyMindState) -> PolyMindState:
         result = run_async(docqa.process(file_path, question=question))
 
         logger.info("docqa.done", answer=result.get("answer"))
-        return {**state, "docqa_result": result}
+        return {**state, "current_node": "docqa", "docqa_result": result}
 
     except Exception as e:
         logger.error("docqa.failed", error=str(e))
-        return {**state, "docqa_result": {"answer": f"DocQA failed: {e}"}}
+        return {**state, "current_node": "docqa", "docqa_result": {"answer": f"DocQA failed: {e}"}}
 
 
 def tableqa_node(state: PolyMindState) -> PolyMindState:
@@ -162,8 +149,8 @@ def tableqa_node(state: PolyMindState) -> PolyMindState:
         result = run_async(tableqa.process(file_path, question=question))
 
         logger.info("tableqa.done", answer=result.get("answer"))
-        return {**state, "tableqa_result": result}
+        return {**state, "current_node": "tableqa", "tableqa_result": result}
 
     except Exception as e:
         logger.error("tableqa.failed", error=str(e))
-        return {**state, "tableqa_result": {"answer": f"TableQA failed: {e}"}}
+        return {**state, "current_node": "tableqa", "tableqa_result": {"answer": f"TableQA failed: {e}"}}

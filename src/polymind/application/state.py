@@ -51,3 +51,6 @@ class PolyMindState(TypedDict, total=False):
     passed_critic: bool
     retry_count: int
     should_retry: bool
+
+    # ── Streaming tracking ─────────────────────
+    current_node: str

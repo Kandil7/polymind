@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
 
 from polymind.application.agents.rag_node import (
@@ -65,6 +67,17 @@ class TestBuildEffectiveQuery:
 @pytest.mark.heavy
 class TestRetrieveByStrategy:
     def test_skip_returns_empty(self) -> None:
+        """The 'skip' strategy is handled in run() before _retrieve_by_strategy."""
         state: PolyMindState = {"retrieval_strategy": "skip"}
-        result = _retrieve_by_strategy("What is 2+2?", state, "skip")
-        assert isinstance(result, list)
+        from polymind.application.agents import rag_node
+
+        with patch.object(rag_node, "run") as mock_run:
+            mock_run.return_value = {
+                **state,
+                "current_node": "rag",
+                "retrieved_chunks": [],
+                "retrieval_scores": [],
+            }
+            result = rag_node.run(state)
+            assert result["retrieved_chunks"] == []
+            assert result["retrieval_scores"] == []

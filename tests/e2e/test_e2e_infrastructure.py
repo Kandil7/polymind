@@ -53,7 +53,8 @@ class TestE2ECircuitBreaker:
         """Test full circuit breaker lifecycle."""
         from polymind.infrastructure.circuit_breaker import CircuitBreaker, CircuitState
 
-        cb = CircuitBreaker("test", failure_threshold=3, recovery_timeout=0)
+        # Use non-zero recovery_timeout so OPEN state is observable
+        cb = CircuitBreaker("test", failure_threshold=3, recovery_timeout=30)
 
         # Closed state
         assert cb.state == CircuitState.CLOSED
@@ -65,9 +66,10 @@ class TestE2ECircuitBreaker:
         assert cb.state == CircuitState.OPEN
         assert cb.allow_request() is False
 
-        # Recovery transitions to half-open
-        assert cb.allow_request() is True
+        # Force transition to half-open (bypass recovery timeout for test)
+        cb._last_failure_time = 0.0  # Simulate elapsed recovery time
         assert cb.state == CircuitState.HALF_OPEN
+        assert cb.allow_request() is True
 
         # Success closes the circuit
         cb.record_success()

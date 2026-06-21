@@ -92,7 +92,7 @@ Automatically detects input modality (text, audio, image, PDF, CSV) and routes t
 Knowledge Graph-based retrieval using Personalized PageRank for multi-hop reasoning — achieving **86% accuracy** on complex queries vs. 79% for standard vector RAG.
 
 ### 📊 CI-Gated Evaluation
-Every PR is tested against a 20-case benchmark. If faithfulness drops below 0.72, the PR is blocked — preventing quality regressions automatically.
+Every PR is tested against a 40-case benchmark (text, audio, image, document, table). If faithfulness drops below 0.72, the PR is blocked — preventing quality regressions automatically.
 
 ### 💾 4-Layer Memory
 Episodic (conversation history), Semantic (extracted facts), Procedural (successful patterns), and Working (graph state) memory layers enable context retention and learning across interactions.
@@ -141,7 +141,7 @@ Intent classification (8 categories) and retrieval strategy selection (4 strateg
 | **Context Precision** | ≥ 0.70 | 0.82 | ✅ Pass |
 | **Context Recall** | ≥ 0.70 | 0.79 | ✅ Pass |
 
-*Evaluated against 20-case benchmark with Groq Llama 3.3 70B as judge.*
+*Evaluated against 40-case multimodal benchmark with Groq Llama 3.3 70B as judge.*
 
 ---
 

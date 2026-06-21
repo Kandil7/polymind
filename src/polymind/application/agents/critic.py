@@ -67,6 +67,7 @@ def run(state: PolyMindState) -> PolyMindState:
 
     return {
         **state,
+        "current_node": "critic",
         "critic_scores": scores,
         "passed_critic": passed,
         "should_retry": should_retry,
