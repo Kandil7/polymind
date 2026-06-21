@@ -81,6 +81,7 @@ class CLIPEmbedder:
         if self._model is None:
             raise RuntimeError("CLIP model not loaded")
 
+        import numpy as np
         import torch
 
         inputs = self._processor(
@@ -115,6 +116,7 @@ class CLIPEmbedder:
         if self._model is None:
             raise RuntimeError("CLIP model not loaded")
 
+        import numpy as np
         import torch
         from pathlib import Path
         from PIL import Image
