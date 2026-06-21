@@ -36,6 +36,13 @@ class TTLCache:
 
     Uses OrderedDict for O(1) access and LRU eviction.
     Old entries are pruned on access to prevent memory leaks.
+
+    Attributes:
+        _max_size: Maximum number of entries allowed.
+        _default_ttl: Default time-to-live in seconds.
+        _cache: OrderedDict storing (value, expiry) tuples.
+        _hits: Total cache hits.
+        _misses: Total cache misses.
     """
 
     def __init__(
@@ -148,19 +155,40 @@ def cache_key(*parts: Any) -> str:
 
 
 def cached_embedding(query: str) -> list[float] | None:
-    """Get cached embedding for a query."""
+    """Get cached embedding for a query.
+
+    Args:
+        query: The text query used as cache key.
+
+    Returns:
+        Cached embedding vector, or None if not found.
+    """
     key = cache_key("embed", query)
     return cache.get(key)
 
 
 def store_embedding(query: str, embedding: list[float], ttl: int = 86400) -> None:
-    """Cache an embedding vector (24h default TTL)."""
+    """Cache an embedding vector (24h default TTL).
+
+    Args:
+        query: The text query used as cache key.
+        embedding: Embedding vector to cache.
+        ttl: Time-to-live in seconds (default 86400).
+    """
     key = cache_key("embed", query)
     cache.set(key, embedding, ttl=ttl)
 
 
 def cached_response(query: str, user_id: str = "default") -> dict | None:
-    """Get cached response for a query."""
+    """Get cached response for a query.
+
+    Args:
+        query: The user's query text.
+        user_id: User identifier for per-user caching.
+
+    Returns:
+        Cached response dict, or None if not found.
+    """
     key = cache_key("response", query, user_id)
     return cache.get(key)
 
@@ -171,18 +199,38 @@ def store_response(
     user_id: str = "default",
     ttl: int = 1800,
 ) -> None:
-    """Cache a query response (30min default TTL)."""
+    """Cache a query response (30min default TTL).
+
+    Args:
+        query: The user's query text.
+        response: Response dict to cache.
+        user_id: User identifier for per-user caching.
+        ttl: Time-to-live in seconds (default 1800).
+    """
     key = cache_key("response", query, user_id)
     cache.set(key, response, ttl=ttl)
 
 
 def cached_classification(query: str) -> str | None:
-    """Get cached intent classification."""
+    """Get cached intent classification.
+
+    Args:
+        query: The user's query text.
+
+    Returns:
+        Cached intent string, or None if not found.
+    """
     key = cache_key("intent", query)
     return cache.get(key)
 
 
 def store_classification(query: str, intent: str, ttl: int = 3600) -> None:
-    """Cache an intent classification (1h default TTL)."""
+    """Cache an intent classification (1h default TTL).
+
+    Args:
+        query: The user's query text.
+        intent: Intent classification to cache.
+        ttl: Time-to-live in seconds (default 3600).
+    """
     key = cache_key("intent", query)
     cache.set(key, intent, ttl=ttl)

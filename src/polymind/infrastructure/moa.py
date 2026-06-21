@@ -142,7 +142,17 @@ async def _generate_single_agent(
     config: dict,
     factory: object,
 ) -> str:
-    """Generate an answer using a single agent configuration."""
+    """Generate an answer using a single agent configuration.
+
+    Args:
+        query: The user's question.
+        context: Retrieved context for grounding.
+        config: Agent configuration dict with name, temperature, system_prompt.
+        factory: LLMFactory instance for model access.
+
+    Returns:
+        Generated answer text from the agent.
+    """
     from langchain_core.messages import HumanMessage, SystemMessage
 
     llm = factory.get_llm(tier="fast")
@@ -175,7 +185,18 @@ async def _merge_answers(
     factory: object,
     model_tier: str = "reasoning",
 ) -> str:
-    """Merge multiple candidate answers into one high-quality answer."""
+    """Merge multiple candidate answers into one high-quality answer.
+
+    Args:
+        query: The user's question.
+        context: Retrieved context for grounding.
+        candidates: List of dicts with 'name' and 'answer' keys.
+        factory: LLMFactory instance for model access.
+        model_tier: LLM tier for the merger agent.
+
+    Returns:
+        Merged answer text combining the best parts.
+    """
     from langchain_core.messages import HumanMessage
 
     # Format candidates
@@ -195,5 +216,12 @@ async def _merge_answers(
 
 
 def get_agent_configs(num_agents: int = 3) -> list[dict]:
-    """Get agent configurations for MoA."""
+    """Get agent configurations for MoA.
+
+    Args:
+        num_agents: Number of agent configs to return (max 3).
+
+    Returns:
+        List of agent configuration dicts.
+    """
     return AGENT_CONFIGS[:num_agents]

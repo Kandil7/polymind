@@ -33,7 +33,14 @@ _tracer = None
 
 
 def _setup_tracer():
-    """Initialize OpenTelemetry tracer."""
+    """Initialize OpenTelemetry tracer.
+
+    Configures the tracer provider with either OTLP or console exporter
+    based on the OTEL_EXPORTER_TYPE environment variable.
+
+    Returns:
+        True if tracer was set up successfully, False otherwise.
+    """
     global _tracer
 
     try:
@@ -78,7 +85,11 @@ def _setup_tracer():
 
 
 def get_tracer():
-    """Get the configured tracer, initializing if needed."""
+    """Get the configured tracer, initializing if needed.
+
+    Returns:
+        OpenTelemetry tracer instance, or None if setup failed.
+    """
     global _tracer
     if _tracer is None:
         _setup_tracer()

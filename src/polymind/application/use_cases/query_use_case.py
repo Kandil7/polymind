@@ -1,4 +1,8 @@
-"""QueryUseCase — orchestrates the full query pipeline."""
+"""QueryUseCase — orchestrates the full query pipeline.
+
+Runs the PolyMind agent graph end-to-end: classification, retrieval,
+generation, and critique for a single user query.
+"""
 
 from __future__ import annotations
 
@@ -13,13 +17,27 @@ if TYPE_CHECKING:
 
 
 class QueryUseCase:
-    """Orchestrates the PolyMind agent graph for a single query."""
+    """Orchestrates the PolyMind agent graph for a single query.
+
+    Builds the LangGraph pipeline and invokes it with the query state.
+
+    Attributes:
+        _graph: Compiled LangGraph agent graph.
+    """
 
     def __init__(self) -> None:
+        """Initialize the query use case by building the agent graph."""
         self._graph = build_graph()
 
     async def execute(self, query: Query) -> QueryResult:
-        """Run the full agent graph and return a QueryResult."""
+        """Run the full agent graph and return a QueryResult.
+
+        Args:
+            query: The user's Query entity with text, user_id, and optional paths.
+
+        Returns:
+            QueryResult with the generated answer, modality, and retry count.
+        """
         initial_state: PolyMindState = {
             "user_query": query.text,
             "user_id": query.user_id,

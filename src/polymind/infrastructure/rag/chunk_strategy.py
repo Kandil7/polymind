@@ -76,6 +76,9 @@ class CodeChunker:
 
     Preserves code structure by splitting at logical boundaries
     (function/class definitions, imports, comments).
+
+    Attributes:
+        max_chunk_size: Maximum chunk size in characters.
     """
 
     def __init__(self, max_chunk_size: int = 2000) -> None:
@@ -188,10 +191,21 @@ def select_chunker(
 
 
 def get_available_strategies() -> list[str]:
-    """Get list of available chunking strategies."""
+    """Get list of available chunking strategies.
+
+    Returns:
+        List of strategy names: recursive, semantic, table, code.
+    """
     return ["recursive", "semantic", "table", "code"]
 
 
 def get_strategy_for_file(file_type: str) -> str:
-    """Get the default strategy for a file type."""
+    """Get the default strategy for a file type.
+
+    Args:
+        file_type: File extension (without dot).
+
+    Returns:
+        Strategy name (recursive, semantic, table, or code).
+    """
     return FILE_TYPE_STRATEGIES.get(file_type.lower(), "recursive")

@@ -28,6 +28,14 @@ logger = structlog.get_logger()
 
 
 class CircuitState(str, Enum):
+    """Represents the three states of a circuit breaker.
+
+    Attributes:
+        CLOSED: Normal operation, requests pass through.
+        OPEN: Service is down, requests fail fast.
+        HALF_OPEN: Testing if service recovered.
+    """
+
     CLOSED = "closed"
     OPEN = "open"
     HALF_OPEN = "half_open"
@@ -38,6 +46,18 @@ class CircuitBreaker:
 
     Prevents cascading failures by tracking success/failure rates
     and temporarily blocking requests to failing services.
+
+    Attributes:
+        _name: Service name for logging.
+        _failure_threshold: Failures before opening circuit.
+        _recovery_timeout: Seconds before transitioning to half-open.
+        _half_open_max: Max requests allowed in half-open state.
+        _state: Current circuit state.
+        _failure_count: Consecutive failure counter.
+        _success_count: Success counter in half-open state.
+        _last_failure_time: Timestamp of last failure.
+        _half_open_count: Requests sent in half-open state.
+        _just_failed_in_half_open: Flag to prevent immediate re-transition.
     """
 
     def __init__(
@@ -136,7 +156,10 @@ class CircuitBreaker:
             )
 
     def reset(self) -> None:
-        """Manually reset the circuit breaker."""
+        """Manually reset the circuit breaker to closed state.
+
+        Resets all counters and transitions back to normal operation.
+        """
         self._state = CircuitState.CLOSED
         self._failure_count = 0
         self._success_count = 0
@@ -145,7 +168,11 @@ class CircuitBreaker:
         logger.info("circuit.reset", service=self._name)
 
     def stats(self) -> dict:
-        """Get circuit breaker statistics."""
+        """Get circuit breaker statistics.
+
+        Returns:
+            Dict with name, state, failures, and threshold.
+        """
         return {
             "name": self._name,
             "state": self.state.value,
@@ -162,7 +189,14 @@ _memory_breaker = CircuitBreaker("memory", failure_threshold=3, recovery_timeout
 
 
 def get_breaker(service: str) -> CircuitBreaker:
-    """Get circuit breaker for a service."""
+    """Get circuit breaker for a service.
+
+    Args:
+        service: Service name (qdrant, llm, embedder, memory).
+
+    Returns:
+        CircuitBreaker instance for the given service.
+    """
     breakers = {
         "qdrant": _qdrant_breaker,
         "llm": _llm_breaker,
@@ -173,5 +207,9 @@ def get_breaker(service: str) -> CircuitBreaker:
 
 
 def all_breakers() -> list[CircuitBreaker]:
-    """Get all circuit breakers."""
+    """Get all registered circuit breakers.
+
+    Returns:
+        List of all CircuitBreaker instances.
+    """
     return [_qdrant_breaker, _llm_breaker, _embedder_breaker, _memory_breaker]

@@ -1,6 +1,7 @@
 """Groq ASR — speech-to-text via Groq's Whisper API.
 
 Replaces local Whisper model with Groq's hosted Whisper for faster inference.
+Provides automatic language detection and ultra-fast transcription (~280 t/s).
 """
 
 from __future__ import annotations
@@ -25,6 +26,10 @@ class GroqASRWrapper(ISpecialist):
     - No GPU required
     - Ultra-fast inference (~280 t/s)
     - Automatic language detection
+
+    Attributes:
+        _model_id: Groq model identifier for Whisper.
+        _client: Groq API client instance.
     """
 
     def __init__(self, model_id: str = DEFAULT_MODEL) -> None:

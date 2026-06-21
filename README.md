@@ -8,7 +8,7 @@ A production-grade AI system that routes queries across 7+ HuggingFace task type
 
 [![CI](https://github.com/Kandil7/polymind/actions/workflows/ci.yml/badge.svg)](https://github.com/Kandil7/polymind/actions/workflows/ci.yml)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-200%2B%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-390%2B%20passing-brightgreen.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-black.svg)](https://github.com/astral-sh/ruff)
 
@@ -37,13 +37,14 @@ PolyMind collapses multiple AI tools into a single conversational interface with
                     ┌──────────────────▼──────────────────┐
                     │          Planner Agent               │
                     │  • Modality detection                │
-                    │  • Intent classification             │
+                    │  • Intent classification (LLM)       │
                     │  • Memory recall (episodic+semantic) │
                     └──────────────────┬──────────────────┘
                                        │
                     ┌──────────────────▼──────────────────┐
                     │          Router Agent                │
                     │  Conditional dispatch by modality    │
+                    │  + Strategy: skip|standard|hipporag  │
                     └──┬─────┬─────┬──────┬──────┬───────┘
                        │     │     │      │      │
                        ▼     ▼     ▼      ▼      ▼
@@ -57,17 +58,20 @@ PolyMind collapses multiple AI tools into a single conversational interface with
                     ┌─────────────────▼──────────────────┐
                     │       HippoRAG Retriever            │
                     │  Knowledge Graph + PageRank (PPR)   │
+                    │  HyDE query expansion               │
+                    │  Cross-encoder reranking            │
                     │  Multi-hop: 86% vs 79% baseline     │
                     └─────────────────┬──────────────────┘
                                       │
                     ┌─────────────────▼──────────────────┐
                     │          Generator                  │
                     │  Groq Llama 3.3 70B @ 280 t/s      │
+                    │  + Mixture-of-Agents (3 temps)      │
                     └─────────────────┬──────────────────┘
                                       │
                     ┌─────────────────▼──────────────────┐
                     │          Critic Agent               │
-                    │  LLM-as-Judge: 6 metrics            │
+                    │  LLM-as-Judge: 3 metrics            │
                     │  Faithfulness│Relevancy│Hallucination│
                     │  ↻ Retry loop (max 2) if rejected   │
                     └─────────────────┬──────────────────┘
@@ -75,6 +79,7 @@ PolyMind collapses multiple AI tools into a single conversational interface with
                     ┌─────────────────▼──────────────────┐
                     │         Synthesizer                 │
                     │  Citations + Confidence + Memory    │
+                    │  Episode storage + Consolidation    │
                     └────────────────────────────────────┘
 ```
 
@@ -92,10 +97,10 @@ Automatically detects input modality (text, audio, image, PDF, CSV) and routes t
 Knowledge Graph-based retrieval using Personalized PageRank for multi-hop reasoning — achieving **86% accuracy** on complex queries vs. 79% for standard vector RAG.
 
 ### 📊 CI-Gated Evaluation
-Every PR is tested against a 40-case benchmark (text, audio, image, document, table). If faithfulness drops below 0.72, the PR is blocked — preventing quality regressions automatically.
+Every PR is tested against a 40-case multimodal benchmark (text, audio, image, document, table). If faithfulness drops below 0.72, the PR is blocked — preventing quality regressions automatically.
 
 ### 💾 4-Layer Memory
-Episodic (conversation history), Semantic (extracted facts), Procedural (successful patterns), and Working (graph state) memory layers enable context retention and learning across interactions.
+Episodic (conversation history via Mem0), Semantic (extracted facts via Qdrant), Procedural (successful patterns), and Working (graph state) memory layers enable context retention and learning across interactions.
 
 ### ⚡ Groq Integration
 Ultra-fast LLM inference (280-560 tokens/second) via Groq API — no GPU required for the LLM calls.
@@ -104,10 +109,19 @@ Ultra-fast LLM inference (280-560 tokens/second) via Groq API — no GPU require
 Real-time progress updates as each agent node completes. Users see "Planning → Routing → Retrieving → Generating → Evaluating" instead of waiting for the full response.
 
 ### 🔒 Production Security
-Per-IP rate limiting, API key authentication, and CORS middleware — ready for deployment.
+Per-IP rate limiting, API key authentication, CORS middleware, and circuit breaker pattern — ready for deployment.
 
 ### 🎯 LLM-Based Classification
 Intent classification (8 categories) and retrieval strategy selection (4 strategies) powered by LLM with keyword fallback for reliability.
+
+### 🧪 Mixture-of-Agents
+Three generator agents with different temperatures (precise/comprehensive/creative) produce independent drafts, then a merger synthesizes the best parts into a single superior answer.
+
+### 📝 HyDE Query Expansion
+Hypothetical Document Embeddings generate a hypothetical answer first, then use it for retrieval — improving relevance for complex queries.
+
+### 🔧 Graceful Degradation
+Circuit breakers (Qdrant, LLM, Embedder, Memory) with automatic fallback paths: keyword classification when LLM is down, skip retrieval when Qdrant is unavailable, extractive generation when reasoning fails.
 
 ---
 
@@ -119,13 +133,15 @@ Intent classification (8 categories) and retrieval strategy selection (4 strateg
 | **LLM** | Inference | Groq (Llama 3.3 70B) | 280 t/s, free tier, OpenAI-compatible |
 | **Vector DB** | Storage | Qdrant | Hybrid search, payload filtering, scalability |
 | **Embeddings** | Dense vectors | BAAI/bge-m3 | Multilingual, 1024-dim, high quality |
+| **Reranker** | Precision | BAAI/bge-reranker-v2-m3 | Cross-encoder for 2-stage retrieval |
 | **ASR** | Speech-to-text | Whisper (Groq API) | No GPU needed, auto language detection |
 | **VQA** | Image QA | BLIP | Open-source, fast inference |
 | **DocQA** | Document QA | LayoutLM | Layout-aware document understanding |
 | **TableQA** | Table QA | TAPAS | Structured data reasoning |
+| **CLIP** | Multi-modal | openai/clip-vit-base-patch32 | Cross-modal text+image embeddings |
 | **Evaluation** | Quality metrics | DeepEval + RAGAS | 6+ metrics, LLM-as-Judge |
-| **Observability** | Metrics | Prometheus + Grafana | Real-time dashboards |
-| **Memory** | Context | Mem0 + Qdrant | Episodic + semantic recall |
+| **Observability** | Metrics | Prometheus + OpenTelemetry | Real-time dashboards + distributed tracing |
+| **Memory** | Context | Mem0 + Qdrant + JSON | Episodic + semantic + procedural recall |
 | **Backend** | API | FastAPI | Async, auto-docs, Pydantic v2 |
 | **Demo** | UI | Streamlit | Interactive multimodal chat |
 
@@ -171,6 +187,9 @@ cp .env.example .env
 # Start infrastructure (Qdrant + Prometheus + Grafana)
 docker compose up -d
 
+# Seed sample data into Qdrant
+make seed
+
 # Start the API server
 make dev
 ```
@@ -197,10 +216,24 @@ curl -X POST http://localhost:8000/query/ \
   -F "audio_file=@meeting.mp3"
 ```
 
+**Image Analysis**
+```bash
+curl -X POST http://localhost:8000/query/ \
+  -F "question=What is in this image?" \
+  -F "image_file=@photo.jpg"
+```
+
 **Document Ingestion**
 ```bash
 curl -X POST http://localhost:8000/ingest/ \
   -F "file=@research_paper.pdf"
+```
+
+**Submit Feedback**
+```bash
+curl -X POST http://localhost:8000/feedback/ \
+  -H "Content-Type: application/json" \
+  -d '{"query_id": "abc-123", "rating": 5, "comment": "Great answer!"}'
 ```
 
 **Run Evaluation**
@@ -223,46 +256,60 @@ streamlit run app.py
 ```
 polymind/
 ├── src/polymind/
-│   ├── domain/                    # Layer 2: Pure domain logic
-│   │   ├── entities/              # Query, Answer, DocumentChunk, Episode
-│   │   ├── interfaces/            # IRetriever, ISpecialist, IGenerator
-│   │   ├── value_objects/         # Modality, RetrievalStrategy, Score
-│   │   └── exceptions/            # DomainError, RetrievalError
+│   ├── domain/                      # Layer 1: Pure domain logic
+│   │   ├── entities/                # Query, Answer, DocumentChunk, Episode
+│   │   ├── interfaces/              # IRetriever, ISpecialist, IGenerator, IEvaluator, IMemoryStore
+│   │   ├── value_objects/           # Modality, RetrievalStrategy, Score
+│   │   └── exceptions/              # DomainError, RetrievalError, CriticFailedError, IngestionError
 │   │
-│   ├── application/               # Layer 3: Use cases & orchestration
-│   │   ├── agents/                # LangGraph nodes
-│   │   │   ├── planner.py         # Modality + intent detection
-│   │   │   ├── router.py          # Conditional routing
-│   │   │   ├── specialist_nodes.py# ASR, VQA, DocQA, TableQA
-│   │   │   ├── rag_node.py        # Context retrieval
-│   │   │   ├── generator.py       # LLM answer synthesis
-│   │   │   ├── critic.py          # Self-evaluation (LLM-as-Judge)
-│   │   │   └── synthesizer.py     # Final formatting + memory
-│   │   ├── graph.py               # LangGraph graph factory
-│   │   └── state.py               # PolyMindState TypedDict
+│   ├── application/                 # Layer 2: Use cases & orchestration
+│   │   ├── agents/                  # LangGraph nodes
+│   │   │   ├── planner.py           # Modality + intent detection + memory recall
+│   │   │   ├── router.py            # Conditional routing + strategy classification
+│   │   │   ├── specialist_nodes.py  # ASR, VQA, DocQA, TableQA nodes
+│   │   │   ├── rag_node.py          # Multi-strategy retrieval + HyDE + reranking
+│   │   │   ├── generator.py         # LLM synthesis + MoA support
+│   │   │   ├── critic.py            # Self-evaluation (LLM-as-Judge) + retry logic
+│   │   │   └── synthesizer.py       # Final formatting + memory storage + consolidation
+│   │   ├── graph.py                 # LangGraph graph factory (10 nodes)
+│   │   ├── state.py                 # PolyMindState TypedDict
+│   │   └── use_cases/               # QueryUseCase, IngestUseCase
 │   │
-│   ├── infrastructure/            # Layer 1: External systems
-│   │   ├── qdrant/                # HippoRAG, chunk repository
-│   │   ├── specialists/           # 5 HuggingFace model wrappers
-│   │   ├── llm/                   # Groq LLM factory + ASR
-│   │   ├── memory/                # 4-layer memory system
-│   │   ├── rag/                   # Embedder, chunker, ingestion
-│   │   └── eval/                  # DeepEval + RAGAS runner
+│   ├── infrastructure/              # Layer 3: External systems
+│   │   ├── qdrant/                  # HippoRAG, chunk repository, client factory
+│   │   ├── specialists/             # 5 HuggingFace model wrappers (ASR, VQA, DocQA, TableQA, Summarizer)
+│   │   ├── llm/                     # Groq LLM factory + ASR wrapper
+│   │   ├── memory/                  # 4-layer memory (Episodic, Semantic, Procedural, Consolidation)
+│   │   ├── rag/                     # Embedder, chunker, ingestion, reranker, CLIP, multimodal retriever
+│   │   ├── eval/                    # DeepEval + RAGAS runner
+│   │   ├── cache.py                 # In-memory TTL cache with LRU eviction
+│   │   ├── circuit_breaker.py       # Circuit breaker pattern (CLOSED/OPEN/HALF_OPEN)
+│   │   ├── degradation.py           # Graceful degradation manager
+│   │   ├── hyde.py                  # HyDE query expansion
+│   │   ├── moa.py                   # Mixture-of-Agents generator
+│   │   ├── feedback.py              # User feedback store (JSON persistence)
+│   │   ├── tracing.py               # OpenTelemetry distributed tracing
+│   │   └── async_utils.py           # Thread-safe async runner
 │   │
-│   └── api/                       # Layer 4: FastAPI delivery
-│       ├── routes/                # /query, /ingest, /eval, /health
-│       ├── schemas/               # Pydantic request/response models
-│       └── middleware/             # structlog + Prometheus
+│   └── api/                         # Layer 4: FastAPI delivery
+│       ├── main.py                  # App factory with lifespan
+│       ├── routes/                  # /query, /query/stream, /ingest, /eval, /feedback, /health
+│       ├── schemas/                 # Pydantic request/response models
+│       └── middleware/               # Auth, rate limiting, Prometheus metrics, structlog
 │
 ├── tests/
-│   ├── unit/                      # 168 unit tests
-│   └── eval/                      # RAGAS benchmark suite (20 cases)
+│   ├── unit/                        # 334 unit tests
+│   ├── integration/                 # 4 integration test files
+│   ├── e2e/                         # 45 end-to-end tests
+│   ├── eval/                        # RAGAS benchmark suite (40 cases)
+│   └── fixtures/                    # Test data
 │
-├── infra/                         # Docker, Prometheus, Modal
-├── scripts/                       # Seed data, eval runner
-├── .github/workflows/             # CI + eval gate
-├── app.py                         # Streamlit demo
-└── pyproject.toml                 # Poetry config
+├── infra/                           # Docker, Prometheus, Modal GPU deployment
+├── scripts/                         # Seed data, eval runner
+├── docs/                            # Architecture, learning guides, phase docs, ADRs
+├── .github/workflows/               # CI + eval gate + deploy
+├── app.py                           # Streamlit demo
+└── pyproject.toml                   # Poetry config
 ```
 
 ---
@@ -275,6 +322,9 @@ make test
 
 # Run with coverage report
 pytest tests/unit --cov=polymind --cov-report=html
+
+# Run e2e tests
+pytest tests/e2e -v
 
 # Run evaluation harness
 make eval
@@ -292,12 +342,16 @@ make format
 
 | Endpoint | Method | Description | Request |
 |----------|--------|-------------|---------|
-| `/health` | GET | Health check | — |
-| `/query/` | POST | Multimodal query | `question`, `audio_file`, `image_file`, `doc_file` |
+| `/health` | GET | Health check with circuit breaker status | — |
+| `/query/` | POST | Multimodal query (non-streaming) | `question`, `audio_file`, `image_file`, `doc_file` |
+| `/query/stream` | POST | Multimodal query with SSE streaming | `question`, `audio_file`, `image_file`, `doc_file` |
 | `/ingest/` | POST | Document ingestion | `file`, `source_name` |
 | `/eval/` | POST | Run evaluation | `{"limit": N}` |
+| `/feedback/` | POST | Submit user feedback | `query_id`, `rating`, `comment` |
+| `/feedback/stats` | GET | Get feedback statistics | — |
 | `/metrics` | GET | Prometheus metrics | — |
-| `/docs` | GET | Interactive API docs | — |
+| `/docs` | GET | Interactive API docs (Swagger) | — |
+| `/redoc` | GET | API documentation (ReDoc) | — |
 
 ---
 
@@ -313,6 +367,7 @@ make format
 | 6 | Eval & CI | v0.6.0 | 168 | RAGAS harness + GitHub Actions gate |
 | 7 | API | v0.7.0 | 180 | Full endpoints + observability |
 | 8 | Demo | v1.0.0 | 200+ | Streamlit app + Modal GPU + Streaming SSE |
+| 9 | Production | v1.0.0 | 390+ | Circuit breakers, HyDE, MoA, reranking, CLIP, feedback, rate limiting |
 
 ---
 
@@ -334,10 +389,10 @@ make format
 |----------------|-------------------|
 | "Reduce hallucination rates in production" | Critic agent + RAGAS faithfulness ≥ 0.72 |
 | "Experience with multi-agent systems" | LangGraph 10-node graph with conditional routing |
-| "LLM evaluation and monitoring" | CI-gated RAGAS + Prometheus metrics |
-| "Multi-modal AI systems" | 7+ HF tasks across text, audio, vision |
-| "RAG pipeline design" | HippoRAG v2 + hybrid Qdrant search |
-| "Production-grade API" | FastAPI + Docker + eval gate |
+| "LLM evaluation and monitoring" | CI-gated RAGAS + Prometheus metrics + OpenTelemetry tracing |
+| "Multi-modal AI systems" | 7+ HF tasks across text, audio, vision + CLIP cross-modal |
+| "RAG pipeline design" | HippoRAG v2 + HyDE + cross-encoder reranking + hybrid Qdrant search |
+| "Production-grade API" | FastAPI + Docker + eval gate + circuit breakers + rate limiting |
 
 ---
 

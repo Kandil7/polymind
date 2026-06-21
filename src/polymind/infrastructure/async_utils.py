@@ -1,4 +1,8 @@
-"""Shared utilities for running async code from sync contexts."""
+"""Shared utilities for running async code from sync contexts.
+
+Provides run_async() for bridging async coroutines into synchronous
+call sites, handling both running and non-running event loop cases.
+"""
 
 from __future__ import annotations
 

@@ -28,6 +28,9 @@ class DegradationManager:
 
     Provides a unified interface to check service health and
     get degraded-mode behavior for each component.
+
+    Attributes:
+        _breakers: Dict mapping service names to CircuitBreaker instances.
     """
 
     def __init__(self) -> None:
@@ -54,13 +57,21 @@ class DegradationManager:
         return breaker.allow_request()
 
     def record_service_success(self, service: str) -> None:
-        """Record successful service call."""
+        """Record successful service call.
+
+        Args:
+            service: Service name (qdrant, llm, embedder, memory).
+        """
         breaker = self._breakers.get(service)
         if breaker:
             breaker.record_success()
 
     def record_service_failure(self, service: str) -> None:
-        """Record failed service call."""
+        """Record failed service call.
+
+        Args:
+            service: Service name (qdrant, llm, embedder, memory).
+        """
         breaker = self._breakers.get(service)
         if breaker:
             breaker.record_failure()
@@ -117,7 +128,11 @@ class DegradationManager:
         return not self.is_service_healthy("memory")
 
     def get_status(self) -> dict:
-        """Get full degradation status for health endpoint."""
+        """Get full degradation status for health endpoint.
+
+        Returns:
+            Dict with services map, healthy_count, total_services, and overall status.
+        """
         modes = self.get_degradation_mode()
         healthy_count = sum(1 for v in modes.values() if v == "healthy")
         total = len(modes)

@@ -4,61 +4,134 @@
 graph TB
     subgraph "Layer 4 — API / Delivery"
         FASTAPI[FastAPI App]
+        AUTH[Auth Middleware<br/>Bearer Token]
+        RATELIMIT[Rate Limiter<br/>Per-IP Sliding Window]
         HEALTH[/health]
         QUERY[/query]
+        STREAM[/query/stream]
         INGEST[/ingest]
         EVAL[/eval]
+        FEEDBACK[/feedback]
     end
 
     subgraph "Layer 3 — Application"
         GRAPH[LangGraph Agent Graph]
         PLANNER[Planner Node]
         ROUTER[Router Node]
+        ASR[ASR Node]
+        VQA[VQA Node]
+        DOCQA[DocQA Node]
+        TABLEQA[TableQA Node]
+        RAG_NODE[RAG Node]
         CRITIC[Critic Node]
         SYNTH[Synthesizer Node]
+        GEN[Generator Node]
     end
 
     subgraph "Layer 2 — Domain"
-        ENTITIES[Entities]
-        INTERFACES[Interfaces]
-        VALUEOBJ[Value Objects]
-        EXCEPTIONS[Exceptions]
+        ENTITIES[Entities<br/>Query | Answer | Chunk]
+        INTERFACES[Interfaces<br/>IRetriever | ISpecialist<br/>IMemoryStore | IGenerator<br/>IEvaluator]
+        VALUEOBJ[Value Objects<br/>Modality | Score<br/>RetrievalStrategy]
+        EXCEPTIONS[Exceptions<br/>DomainError hierarchy]
     end
 
     subgraph "Layer 1 — Infrastructure"
         QDRANT[Qdrant Vector DB]
         SPECIALISTS[HF Specialists<br/>ASR | VQA | DocQA | TableQA]
-        MEMORY[4-Layer Memory<br/>Mem0 + Qdrant]
+        MEMORY[4-Layer Memory<br/>Episodic | Semantic<br/>Procedural | Working]
         EVALUATOR[DeepEval + RAGAS]
-        N8N[n8n Workflows]
         MODAL[Modal GPU]
+        MOA[Mixture-of-Agents<br/>3 temp agents + merger]
+        HYDE[HyDE Query Expansion<br/>Hypothetical Answers]
+        RERANKER[Cross-Encoder Reranker<br/>BAAI/bge-reranker-v2-m3]
+        CLIP[CLIP Embedder<br/>openai/clip-vit-base-patch32]
+        MULTIMODAL[MultiModal Retriever<br/>Cross-Modal Search]
+        CB[Circuit Breakers<br/>qdrant | llm | embedder | memory]
+        CACHE[TTL Cache<br/>Embeddings | Responses<br/>Classifications]
+        DEGRADATION[Degradation Manager<br/>Graceful Fallbacks]
+        FEEDBACK_STORE[Feedback Store<br/>JSON Persistence]
+        TRACING[OpenTelemetry Tracing<br/>OTLP | Console]
     end
 
-    FASTAPI --> GRAPH
-    GRAPH --> PLANNER --> ROUTER
-    ROUTER --> SPECIALISTS
-    SPECIALISTS --> QDRANT
-    GRAPH --> CRITIC --> EVALUATOR
-    CRITIC --> GRAPH
-    GRAPH --> SYNTH
-    PLANNER --> MEMORY
-    N8N --> INGEST
+    subgraph "Planned (Phase 9+)"
+        N8N[n8n Workflows<br/>Planned]
+        REDIS[Redis Cache<br/>Planned]
+    end
 
-    style Layer4 fill:#e3f2fd
-    style Layer3 fill:#e8f5e9
-    style Layer2 fill:#fff3e0
-    style Layer1 fill:#fce4ec
+    %% Layer 4 → Layer 3
+    FASTAPI --> AUTH --> RATELIMIT
+    RATELIMIT --> GRAPH
+    QUERY --> RATELIMIT
+    STREAM --> RATELIMIT
+    INGEST --> RATELIMIT
+
+    %% Layer 3 flow
+    GRAPH --> PLANNER --> ROUTER
+    ROUTER --> ASR
+    ROUTER --> VQA
+    ROUTER --> DOCQA
+    ROUTER --> TABLEQA
+    ROUTER --> RAG_NODE
+    RAG_NODE --> GEN
+    GEN --> CRITIC
+    CRITIC -->|retry| RAG_NODE
+    CRITIC -->|pass| SYNTH
+    SYNTH --> GEN
+
+    %% Layer 3 → Layer 1
+    PLANNER --> MEMORY
+    RAG_NODE --> HYDE
+    RAG_NODE --> QDRANT
+    RAG_NODE --> MULTIMODAL
+    RAG_NODE --> RERANKER
+    GEN --> MOA
+    CRITIC --> EVALUATOR
+    VQA --> CLIP
+    ASR --> SPECIALISTS
+    DOCQA --> SPECIALISTS
+    TABLEQA --> SPECIALISTS
+    SYNTH --> FEEDBACK_STORE
+
+    %% Cross-cutting
+    PLANNER -.-> CB
+    GEN -.-> CB
+    RAG_NODE -.-> CB
+    MEMORY -.-> CB
+    PLANNER -.-> DEGRADATION
+    PLANNER -.-> CACHE
+    GRAPH -.-> TRACING
+
+    %% Planned connections
+    N8N -.->|planned| INGEST
+
+    style "Layer 4 — API / Delivery" fill:#e3f2fd
+    style "Layer 3 — Application" fill:#e8f5e9
+    style "Layer 2 — Domain" fill:#fff3e0
+    style "Layer 1 — Infrastructure" fill:#fce4ec
+    style "Planned (Phase 9+)" fill:#f5f5f5,stroke-dasharray: 5 5
 ```
 
 ## Data Flow
 
-1. **User Input** → FastAPI gateway (text/audio/image/PDF)
-2. **Planner** → Detects modality + intent, recalls memory
-3. **Router** → Dispatches to specialist agent(s)
-4. **Specialist** → Processes modality-specific input
-5. **RAG Retriever** → Retrieves relevant context (HippoRAG)
-6. **Generator** → Synthesizes answer (MoA or single LLM)
-7. **Critic** → Self-evaluates (faithfulness, relevancy, hallucination)
-8. **Retry Loop** → If Critic fails, re-retrieve with expanded query
-9. **Synthesizer** → Merges outputs, adds citations
-10. **Memory** → Stores episode, consolidates semantic facts
+1. **User Input** → FastAPI gateway (text/audio/image/PDF/CSV)
+2. **Auth** → API key validation (Bearer token, public path bypass)
+3. **Rate Limit** → Per-IP sliding window (30/min, 10/min query, 5/min ingest)
+4. **Planner** → Detects modality + intent, recalls memory (circuit breaker gated)
+5. **Router** → Dispatches to specialist agent(s) via conditional edges
+6. **Specialist** → Processes modality-specific input (ASR, VQA, DocQA, TableQA)
+7. **RAG** → HyDE expansion → multi-strategy retrieval → cross-encoder reranking
+8. **Generator** → MoA or single LLM (circuit breaker gated)
+9. **Critic** → Self-evaluates (faithfulness ≥ 0.72, relevancy ≥ 0.75, hallucination ≤ 0.25)
+10. **Retry Loop** → If Critic fails, re-retrieve with expanded query (max 2 retries)
+11. **Synthesizer** → Formats answer with citations, stores episode
+12. **Feedback** → Records user satisfaction signal
+13. **Tracing** → OpenTelemetry spans for all operations
+
+## Component Legend
+
+| Symbol | Meaning |
+|--------|---------|
+| Solid arrows | Data flow (dependency) |
+| Dashed arrows | Cross-cutting concern (circuit breaker, caching, tracing) |
+| Filled boxes | Implemented components |
+| Dashed-border boxes | Planned components (Phase 9+) |

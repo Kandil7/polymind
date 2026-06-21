@@ -1,4 +1,7 @@
-"""IngestUseCase — orchestrates document ingestion into the knowledge base."""
+"""IngestUseCase — orchestrates document ingestion into the knowledge base.
+
+Handles the full pipeline: file → text extraction → chunking → embedding → Qdrant indexing.
+"""
 
 from __future__ import annotations
 
@@ -13,7 +16,16 @@ logger = structlog.get_logger()
 
 @dataclass
 class IngestResult:
-    """Result of a document ingestion operation."""
+    """Result of a document ingestion operation.
+
+    Attributes:
+        status: Ingestion status ("success" or "error").
+        chunks_created: Number of chunks produced.
+        source: Source file name or identifier.
+        collection: Qdrant collection name.
+        processing_time_ms: Total processing time in milliseconds.
+        errors: List of error messages (empty on success).
+    """
 
     status: str
     chunks_created: int
@@ -27,6 +39,10 @@ class IngestUseCase:
     """Orchestrates document ingestion pipeline.
 
     Pipeline: File → Text Extraction → Chunking → Embedding → Qdrant Indexing
+
+    Attributes:
+        _collection: Qdrant collection name.
+        _qdrant_url: Qdrant server URL.
     """
 
     def __init__(

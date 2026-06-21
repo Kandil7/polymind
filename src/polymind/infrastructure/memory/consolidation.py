@@ -38,6 +38,12 @@ class ConsolidationPipeline:
 
     Extracts semantic facts from episodic patterns and stores
     successful procedures for procedural learning.
+
+    Attributes:
+        _user_id: User identifier for memory isolation.
+        _qdrant_url: Qdrant server URL for semantic store.
+        _episode_buffer: Buffer of recent episodic memories.
+        _last_consolidation: Timestamp of last consolidation run.
     """
 
     def __init__(
@@ -188,7 +194,13 @@ Example: ["Fact 1", "Fact 2"]
             return await self._extract_fallback_facts()
 
     async def _extract_fallback_facts(self) -> list[str]:
-        """Fallback fact extraction without LLM."""
+        """Fallback fact extraction without LLM.
+
+        Uses heuristic extraction from individual episode answers.
+
+        Returns:
+            List of extracted fact strings.
+        """
         facts = []
         for ep in self._episode_buffer[:MAX_FACTS_PER_CONSOLIDATION]:
             # Simple heuristic: extract the answer as a fact if it's factual
@@ -202,7 +214,11 @@ Example: ["Fact 1", "Fact 2"]
         return facts
 
     def _store_fact(self, fact: str) -> None:
-        """Store a fact in the semantic store."""
+        """Store a fact in the semantic store.
+
+        Args:
+            fact: The fact string to persist.
+        """
         try:
             from polymind.infrastructure.memory.semantic_store import SemanticStore
             from polymind.infrastructure.qdrant.client_factory import get_qdrant_client
@@ -216,7 +232,14 @@ Example: ["Fact 1", "Fact 2"]
             logger.debug("consolidation.store_fact.failed", error=str(e))
 
     def _is_duplicate(self, fact: str) -> bool:
-        """Check if a fact is too similar to existing facts."""
+        """Check if a fact is too similar to existing facts.
+
+        Args:
+            fact: The fact string to check.
+
+        Returns:
+            True if a similar fact already exists.
+        """
         try:
             from polymind.infrastructure.memory.semantic_store import SemanticStore
             from polymind.infrastructure.qdrant.client_factory import get_qdrant_client
@@ -238,7 +261,11 @@ Example: ["Fact 1", "Fact 2"]
             return False
 
     def _extract_procedures(self) -> list[dict]:
-        """Extract procedural knowledge from successful interactions."""
+        """Extract procedural knowledge from successful interactions.
+
+        Returns:
+            List of procedure dicts with task_type, steps, and success_score.
+        """
         procedures = []
 
         for ep in self._episode_buffer:
@@ -271,7 +298,14 @@ Example: ["Fact 1", "Fact 2"]
         return procedures
 
     def _classify_task_type(self, query: str) -> str:
-        """Classify the task type from the query."""
+        """Classify the task type from the query.
+
+        Args:
+            query: The user's query text.
+
+        Returns:
+            Task type string (summarization, comparison, factual_qa, translation, general).
+        """
         q = query.lower()
 
         if any(w in q for w in ("summarize", "summary", "tldr")):
@@ -286,7 +320,11 @@ Example: ["Fact 1", "Fact 2"]
             return "general"
 
     def _store_procedure(self, procedure: dict) -> None:
-        """Store a procedure in the procedural store."""
+        """Store a procedure in the procedural store.
+
+        Args:
+            procedure: Procedure dict with task_type, steps, success_score.
+        """
         try:
             from polymind.infrastructure.memory.procedural_store import ProceduralStore
 
@@ -300,7 +338,11 @@ Example: ["Fact 1", "Fact 2"]
             logger.debug("consolidation.store_procedure.failed", error=str(e))
 
     def get_stats(self) -> dict:
-        """Get consolidation statistics."""
+        """Get consolidation statistics.
+
+        Returns:
+            Dict with buffer_size, last_consolidation, and threshold.
+        """
         return {
             "buffer_size": len(self._episode_buffer),
             "last_consolidation": self._last_consolidation.isoformat(),

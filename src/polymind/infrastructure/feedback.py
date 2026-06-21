@@ -34,6 +34,10 @@ class FeedbackStore:
 
     Provides feedback recording, retrieval, and analysis for
     improving system performance over time.
+
+    Attributes:
+        _store_path: Path to the JSON feedback file.
+        _feedback: List of feedback entry dicts.
     """
 
     def __init__(self, store_path: str = DEFAULT_STORE_PATH) -> None:
@@ -134,7 +138,11 @@ class FeedbackStore:
         return results[-limit:]
 
     def get_stats(self) -> dict:
-        """Get feedback statistics."""
+        """Get feedback statistics.
+
+        Returns:
+            Dict with total, average_rating, satisfaction_rate, thumbs_up, thumbs_down.
+        """
         if not self._feedback:
             return {
                 "total": 0,
@@ -169,7 +177,11 @@ class FeedbackStore:
         }
 
     def get_satisfaction_by_intent(self) -> dict[str, float]:
-        """Get satisfaction rates by intent type."""
+        """Get satisfaction rates by intent type.
+
+        Returns:
+            Dict mapping intent names to average rating (1-5).
+        """
         intent_ratings: dict[str, list[int]] = {}
 
         for f in self._feedback:
@@ -185,7 +197,11 @@ class FeedbackStore:
         }
 
     def get_satisfaction_by_strategy(self) -> dict[str, float]:
-        """Get satisfaction rates by retrieval strategy."""
+        """Get satisfaction rates by retrieval strategy.
+
+        Returns:
+            Dict mapping strategy names to average rating (1-5).
+        """
         strategy_ratings: dict[str, list[int]] = {}
 
         for f in self._feedback:
@@ -201,7 +217,14 @@ class FeedbackStore:
         }
 
     def get_recent_feedback(self, hours: int = 24) -> list[dict]:
-        """Get feedback from the last N hours."""
+        """Get feedback from the last N hours.
+
+        Args:
+            hours: Lookback window in hours (default 24).
+
+        Returns:
+            List of feedback entries within the time window.
+        """
         from datetime import timedelta
 
         cutoff = datetime.now(UTC) - timedelta(hours=hours)
@@ -213,5 +236,9 @@ class FeedbackStore:
         ]
 
     def count(self) -> int:
-        """Return total number of feedback entries."""
+        """Return total number of feedback entries.
+
+        Returns:
+            Count of stored feedback entries.
+        """
         return len(self._feedback)
