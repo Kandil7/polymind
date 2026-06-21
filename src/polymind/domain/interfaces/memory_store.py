@@ -12,11 +12,21 @@ class IMemoryStore(ABC):
     Subclasses implement domain-specific store/recall methods.
     The generic methods below provide a common interface for
     orchestration code that doesn't know the concrete store type.
+
+    Note: Concrete stores may have different store() signatures for
+    domain-specific parameters. The generic store() method provides
+    a minimal contract for orchestration code.
     """
 
     @abstractmethod
-    def store(self, key: str, value: Any, **kwargs: object) -> None:
-        """Store a memory entry."""
+    def store(self, *args: Any, **kwargs: Any) -> None:
+        """Store a memory entry.
+
+        Concrete implementations accept domain-specific arguments:
+        - EpisodicStore: store(query, answer, faithfulness, modality)
+        - SemanticStore: store(fact, source_query)
+        - ProceduralStore: store(task_type, steps, success_score)
+        """
         ...
 
     @abstractmethod

@@ -110,8 +110,8 @@ async def query_endpoint(
             faithfulness = result.answer.confidence
             passed = result.answer.confidence >= 0.7
             record_query(result.modality, passed, faithfulness)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("metrics.record.failed", error=str(e))
 
         return QueryResponse(
             answer=result.answer.text,

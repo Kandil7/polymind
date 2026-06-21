@@ -159,7 +159,9 @@ polymind/
 │   │   ├── ADR/                  # Architecture Decision Records
 │   │   │   ├── ADR-001-qdrant-over-pgvector.md
 │   │   │   ├── ADR-002-langgraph-over-crewai.md
-│   │   │   └── ADR-003-hipporag-retrieval.md
+│   │   │   ├── ADR-003-clean-architecture.md
+│   │   │   ├── ADR-004-hipporag-v2.md
+│   │   │   └── ADR-005-groq-llm.md
 │   │   └── diagrams/             # Mermaid .mmd files
 │   │
 │   ├── learning/                 # شرح كل ملف ومفهوم
@@ -178,16 +180,15 @@ polymind/
 │   │   ├── PHASE_4_agent_graph.md
 │   │   ├── PHASE_5_memory.md
 │   │   ├── PHASE_6_eval_ci.md
-│   │   ├── PHASE_7_api_observability.md
+│   │   ├── PHASE_7_api.md
 │   │   └── PHASE_8_demo_deploy.md
 │   │
-│   ├── README.md
+│   ├── API_REFERENCE.md
 │   ├── ROADMAP.md
-│   └── CONTRIBUTING.md
+│   └── plan.md
 │
 ├── infra/
 │   ├── docker-compose.yml
-│   ├── docker-compose.test.yml
 │   ├── Dockerfile
 │   ├── prometheus.yml
 │   └── modal_deploy.py

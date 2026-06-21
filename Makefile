@@ -1,4 +1,4 @@
-.PHONY: dev test test-integration eval lint format docs clean seed
+.PHONY: dev test test-integration test-e2e eval lint format docs clean seed docker-build deploy
 
 dev:
 	docker compose up -d qdrant prometheus grafana
@@ -9,6 +9,9 @@ test:
 
 test-integration:
 	poetry run pytest tests/integration -v --tb=short
+
+test-e2e:
+	poetry run pytest tests/e2e -v --tb=short
 
 eval:
 	poetry run pytest tests/eval -v --tb=short
@@ -22,9 +25,16 @@ format:
 	poetry run ruff check --fix src/ tests/
 
 docs:
-	poetry run mkdocs serve
+	@echo "Documentation files are in docs/"
+	@echo "  - README.md: Project overview"
+	@echo "  - docs/API_REFERENCE.md: API reference"
+	@echo "  - docs/ROADMAP.md: Build phases"
+	@echo "  - docs/architecture/: Architecture docs and ADRs"
+	@echo "  - docs/learning/: Learning guides"
+	@echo "  - docs/phases/: Phase documentation"
 
 clean:
+	rm -rf __pycache__ .pytest_cache .mypy_cache htmlcov .ruff_cache
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name .pytest_cache -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name .mypy_cache -exec rm -rf {} + 2>/dev/null || true
@@ -32,3 +42,9 @@ clean:
 
 seed:
 	poetry run python scripts/seed_qdrant.py
+
+docker-build:
+	docker build -t polymind:latest -f infra/Dockerfile .
+
+deploy:
+	poetry run python infra/modal_deploy.py

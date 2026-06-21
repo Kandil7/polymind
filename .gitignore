@@ -35,6 +35,7 @@ ENV/
 # Environment
 .env
 .env.local
+.env.staging
 .env.production
 
 # Testing
@@ -42,10 +43,14 @@ ENV/
 .coverage
 htmlcov/
 .mypy_cache/
+.ruff_cache/
+eval_report.json
+eval_results.json
 
 # Data & Models
 models/
-data/
+data/*.json
+data/*.bin
 *.bin
 *.pt
 *.onnx

@@ -6,7 +6,7 @@ Used for long-term knowledge accumulation.
 
 from __future__ import annotations
 
-import hashlib
+import uuid
 from datetime import UTC, datetime
 
 import structlog
@@ -62,7 +62,7 @@ class SemanticStore(IMemoryStore):
             source_query: Original query that led to this fact.
         """
         embedding = self._embedder.embed_single(fact)
-        point_id = int(hashlib.md5(fact.encode()).hexdigest()[:8], 16)
+        point_id = uuid.uuid4().int >> 64  # 64-bit UUID for Qdrant
 
         self._client.upsert(
             collection_name=self._collection,

@@ -94,8 +94,8 @@ def run(state: PolyMindState) -> PolyMindState:
                 from polymind.infrastructure.degradation import degradation
                 degradation.record_service_failure("qdrant")
                 degradation.record_service_failure("embedder")
-            except Exception:
-                pass
+            except Exception as cb_err:
+                logger.debug("circuit_breaker.record.failed", error=str(cb_err))
 
             logger.error("rag.failed", error=str(e), strategy=strategy)
             return {

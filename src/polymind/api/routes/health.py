@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import os
 
+import structlog
 from fastapi import APIRouter
 
 from polymind import __version__
 from polymind.api.schemas.health import HealthResponse
 
+logger = structlog.get_logger()
 router = APIRouter()
 
 
@@ -62,8 +64,8 @@ async def health_check() -> HealthResponse:
         # Update overall status based on degradation
         if degradation_status["overall"] == "degraded":
             overall_status = "degraded"
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("health.degradation_check.failed", error=str(e))
 
     return HealthResponse(
         status=overall_status,
