@@ -81,6 +81,7 @@ markers = [
     "integration: tests with real services",
     "eval: RAGAS + DeepEval benchmark suite",
     "heavy: tests requiring full ML stack (sentence-transformers, pyarrow)",
+    "e2e: end-to-end tests for full application stack",
 ]
 
 [build-system]

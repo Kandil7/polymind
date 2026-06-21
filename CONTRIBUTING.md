@@ -5,7 +5,7 @@ Thank you for your interest in contributing! This document provides guidelines f
 ## Getting Started
 
 1. Fork the repository
-2. Clone your fork: `git clone https://github.com/your-username/polymind.git`
+2. Clone your fork: `git clone https://github.com/Kandil7/polymind.git`
 3. Create a feature branch: `git checkout -b feat/amazing-feature`
 4. Install dependencies: `poetry install`
 5. Make your changes

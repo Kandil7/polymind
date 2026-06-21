@@ -6,7 +6,7 @@
 
 A production-grade AI system that routes queries across 7+ HuggingFace task types, runs a Critic agent to self-evaluate outputs, and catches hallucinations before they reach the user — all with a CI-gated RAGAS eval harness.
 
-[![CI](https://github.com/your-username/polymind/actions/workflows/ci.yml/badge.svg)](https://github.com/your-username/polymind/actions/workflows/ci.yml)
+[![CI](https://github.com/Kandil7/polymind/actions/workflows/ci.yml/badge.svg)](https://github.com/Kandil7/polymind/actions/workflows/ci.yml)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![Tests](https://img.shields.io/badge/tests-200%2B%20passing-brightgreen.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -158,7 +158,7 @@ Intent classification (8 categories) and retrieval strategy selection (4 strateg
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/polymind.git
+git clone https://github.com/Kandil7/polymind.git
 cd polymind
 
 # Install dependencies
