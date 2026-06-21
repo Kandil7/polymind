@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from polymind.infrastructure.memory.consolidation import (
-    CONSOLIDATION_MIN_EPISODES,
+    MIN_EPISODES_FOR_CONSOLIDATION,
     ConsolidationPipeline,
 )
 
@@ -50,7 +50,7 @@ class TestConsolidationPipeline:
 
 class TestConsolidationConfig:
     def test_min_episodes(self) -> None:
-        assert CONSOLIDATION_MIN_EPISODES == 3
+        assert MIN_EPISODES_FOR_CONSOLIDATION == 3
 
 
 class TestConsolidationIntegration:

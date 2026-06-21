@@ -89,7 +89,8 @@ class DegradationManager:
         """
         qdrant_ok = self.is_service_healthy("qdrant")
         embedder_ok = self.is_service_healthy("embedder")
-        return not (qdrant_ok and embedder_ok)
+        # Only skip if BOTH are down (either one working allows degraded retrieval)
+        return not qdrant_ok and not embedder_ok
 
     def should_use_heuristic_classification(self) -> bool:
         """Check if LLM classification should fall back to keywords.

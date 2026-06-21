@@ -65,11 +65,16 @@ class CircuitBreaker:
         self._success_count = 0
         self._last_failure_time = 0.0
         self._half_open_count = 0
+        self._just_failed_in_half_open = False
 
     @property
     def state(self) -> CircuitState:
         """Get current circuit state."""
         if self._state == CircuitState.OPEN:
+            # Don't transition if we just failed in half-open
+            if self._just_failed_in_half_open:
+                return CircuitState.OPEN
+
             # Check if recovery timeout has elapsed
             if time.time() - self._last_failure_time >= self._recovery_timeout:
                 self._state = CircuitState.HALF_OPEN
@@ -99,6 +104,8 @@ class CircuitBreaker:
 
     def record_success(self) -> None:
         """Record a successful request."""
+        self._just_failed_in_half_open = False
+
         if self._state == CircuitState.HALF_OPEN:
             self._success_count += 1
             # Recovery successful
@@ -118,6 +125,7 @@ class CircuitBreaker:
         if self._state == CircuitState.HALF_OPEN:
             # Failed during recovery — back to open
             self._state = CircuitState.OPEN
+            self._just_failed_in_half_open = True
             logger.warning("circuit.recovery_failed", service=self._name)
         elif self._failure_count >= self._failure_threshold:
             self._state = CircuitState.OPEN
@@ -133,6 +141,7 @@ class CircuitBreaker:
         self._failure_count = 0
         self._success_count = 0
         self._half_open_count = 0
+        self._just_failed_in_half_open = False
         logger.info("circuit.reset", service=self._name)
 
     def stats(self) -> dict:

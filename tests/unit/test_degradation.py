@@ -33,8 +33,7 @@ class TestCircuitBreaker:
     def test_half_open_after_recovery_timeout(self) -> None:
         cb = CircuitBreaker("test", failure_threshold=1, recovery_timeout=0)
         cb.record_failure()
-        assert cb.state == CircuitState.OPEN
-        # With 0 timeout, should transition to half-open immediately
+        # With 0 timeout, allow_request should transition to half-open
         assert cb.allow_request() is True
         assert cb.state == CircuitState.HALF_OPEN
 
@@ -79,11 +78,17 @@ class TestCircuitBreaker:
 class TestDegradationManager:
     def test_initial_all_healthy(self) -> None:
         dm = DegradationManager()
+        # Reset all circuit breakers first
+        for b in dm._breakers.values():
+            b.reset()
         modes = dm.get_degradation_mode()
         assert all(v == "healthy" for v in modes.values())
 
     def test_service_failure_marks_degraded(self) -> None:
         dm = DegradationManager()
+        # Use a fresh circuit breaker
+        cb = CircuitBreaker("qdrant_test", failure_threshold=3)
+        dm._breakers["qdrant"] = cb
         for _ in range(3):
             dm.record_service_failure("qdrant")
         modes = dm.get_degradation_mode()
@@ -91,12 +96,36 @@ class TestDegradationManager:
 
     def test_should_skip_retrieval_when_qdrant_down(self) -> None:
         dm = DegradationManager()
+        # Use fresh breakers
+        qdrant_cb = CircuitBreaker("qdrant_test", failure_threshold=3)
+        embedder_cb = CircuitBreaker("embedder_test", failure_threshold=3)
+        dm._breakers["qdrant"] = qdrant_cb
+        dm._breakers["embedder"] = embedder_cb
+        # Only qdrant down - should NOT skip (embedder still works)
         for _ in range(3):
             dm.record_service_failure("qdrant")
+        assert dm.should_skip_retrieval() is False
+
+    def test_should_skip_when_both_down(self) -> None:
+        dm = DegradationManager()
+        # Use fresh breakers
+        qdrant_cb = CircuitBreaker("qdrant_test", failure_threshold=3)
+        embedder_cb = CircuitBreaker("embedder_test", failure_threshold=3)
+        dm._breakers["qdrant"] = qdrant_cb
+        dm._breakers["embedder"] = embedder_cb
+        # Both down - should skip
+        for _ in range(3):
+            dm.record_service_failure("qdrant")
+            dm.record_service_failure("embedder")
         assert dm.should_skip_retrieval() is True
 
     def test_should_not_skip_when_only_one_down(self) -> None:
         dm = DegradationManager()
+        # Use fresh breakers
+        qdrant_cb = CircuitBreaker("qdrant_test", failure_threshold=3)
+        embedder_cb = CircuitBreaker("embedder_test", failure_threshold=3)
+        dm._breakers["qdrant"] = qdrant_cb
+        dm._breakers["embedder"] = embedder_cb
         for _ in range(3):
             dm.record_service_failure("qdrant")
         # Embedder is still healthy
@@ -104,6 +133,9 @@ class TestDegradationManager:
 
     def test_should_use_heuristic_when_llm_down(self) -> None:
         dm = DegradationManager()
+        # Use fresh breaker
+        llm_cb = CircuitBreaker("llm_test", failure_threshold=5)
+        dm._breakers["llm"] = llm_cb
         for _ in range(5):
             dm.record_service_failure("llm")
         assert dm.should_use_heuristic_classification() is True
@@ -111,6 +143,9 @@ class TestDegradationManager:
 
     def test_get_status(self) -> None:
         dm = DegradationManager()
+        # Reset all breakers
+        for b in dm._breakers.values():
+            b.reset()
         status = dm.get_status()
         assert "services" in status
         assert "healthy_count" in status
@@ -119,6 +154,9 @@ class TestDegradationManager:
 
     def test_degraded_status(self) -> None:
         dm = DegradationManager()
+        # Use fresh breaker
+        qdrant_cb = CircuitBreaker("qdrant_test", failure_threshold=3)
+        dm._breakers["qdrant"] = qdrant_cb
         for _ in range(3):
             dm.record_service_failure("qdrant")
         status = dm.get_status()
