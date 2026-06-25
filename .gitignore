@@ -49,8 +49,7 @@ eval_results.json
 
 # Data & Models
 models/
-data/*.json
-data/*.bin
+data/
 *.bin
 *.pt
 *.onnx
