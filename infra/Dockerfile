@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/*
 
 # Install Poetry
-RUN pip install poetry==1.8.0
+RUN pip install poetry==1.8.0 && pip install virtualenv==20.26.6
 
 # Copy dependency files first (cache layer)
 COPY pyproject.toml poetry.lock ./
